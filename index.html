@@ -3,161 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulator Langsir - Stasiun Ketapang</title>
+    <title>Simulator Langsir Realistic - Stasiun Ketapang</title>
     <style>
-        :root { --primary: #002d5e; --secondary: #f39c12; --danger: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .header { text-align: center; border-bottom: 3px solid var(--primary); padding-bottom: 15px; margin-bottom: 25px; }
-        .header h1 { color: var(--primary); margin: 0; font-size: 24px; }
-        .stats-bar { display: flex; justify-content: space-around; background: var(--primary); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .stat-item { text-align: center; }
-        .stat-value { font-size: 28px; font-weight: bold; color: var(--secondary); }
+        :root { --primary: #002d5e; --secondary: #f39c12; --danger: #e74c3c; --success: #27ae60; --track-bg: #2c3e50; }
+        body { font-family: 'Segoe UI', sans-serif; background: #dfe6e9; margin: 0; padding: 10px; }
         
-        .track-list { display: flex; flex-direction: column; gap: 12px; }
-        .track-row { display: flex; align-items: center; gap: 15px; background: #fafafa; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-        .track-info { width: 140px; font-weight: bold; font-size: 14px; color: #444; }
-        .track-lane { flex-grow: 1; display: flex; gap: 5px; background: #333; padding: 8px; border-radius: 4px; min-height: 45px; overflow-x: auto; align-items: center; border-left: 5px solid var(--secondary); }
+        .main-container { max-width: 1400px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
         
-        .unit { background: #fff; color: #333; padding: 6px 12px; border-radius: 3px; font-size: 12px; font-weight: bold; white-space: nowrap; cursor: pointer; border: 2px solid transparent; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .unit:hover { transform: translateY(-2px); border-color: var(--secondary); }
-        .unit.selected { background: var(--secondary); color: white; animation: blink 1s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        /* Layout Grid */
+        .emplasemen-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr; /* Sisi Kiri (Dipo/Cuci) & Sisi Kanan (Utama) */
+            gap: 20px;
+            margin-top: 20px;
+        }
 
-        .btn-move { padding: 8px 12px; background: var(--success); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; }
-        .btn-move:hover { background: #219150; }
+        .section-title { 
+            background: var(--primary); color: white; padding: 5px 15px; 
+            font-size: 14px; border-radius: 4px; margin-bottom: 10px; text-align: center;
+        }
+
+        /* Styling Jalur */
+        .track-row { display: flex; align-items: center; margin-bottom: 8px; gap: 10px; }
+        .track-label { width: 100px; font-size: 12px; font-weight: bold; color: #2d3436; }
+        .track-lane { 
+            flex-grow: 1; display: flex; gap: 4px; background: var(--track-bg); 
+            padding: 6px; border-radius: 4px; min-height: 40px; align-items: center;
+            border-bottom: 2px solid #95a5a6; overflow-x: auto;
+        }
+
+        /* Gerbong */
+        .unit { 
+            background: #ecf0f1; color: #2c3e50; padding: 5px 10px; border-radius: 2px;
+            font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap;
+            border: 1px solid #bdc3c7; box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+        }
+        .unit.selected { background: var(--secondary); color: white; border-color: #d35400; }
+
+        /* Controls & Logs */
+        .stats-bar { display: flex; justify-content: space-between; align-items: center; background: var(--primary); color: white; padding: 10px 20px; border-radius: 5px; margin-bottom: 15px; }
+        .btn-move { padding: 5px 10px; background: var(--success); color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 10px; }
+        #simLog { background: #000; color: #00ff00; padding: 10px; height: 120px; overflow-y: auto; font-family: monospace; font-size: 12px; border-radius: 5px; margin-top: 15px; }
         
-        .log-section { margin-top: 25px; }
-        #simLog { background: #222; color: #00ff00; padding: 15px; border-radius: 6px; height: 180px; overflow-y: auto; font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.5; }
-        .controls { margin-top: 20px; display: flex; gap: 10px; }
-        .btn-reset { background: var(--danger); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .header-title { text-align: center; color: var(--primary); margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">
-        <h1>SIMULATOR LANGSIR DIGITAL - STASIUN KETAPANG</h1>
-        <p style="color: #666; font-size: 14px;">Logika: Hanya unit paling luar (kanan) yang bisa ditarik ke Wesel.</p>
+<div class="main-container">
+    <div class="header-title">
+        <h2 style="margin:0">SIMULATOR REALISTIC - STASIUN KETAPANG</h2>
+        <small>Mode: Emplasemen Layout | PPKA Monitoring System</small>
     </div>
 
     <div class="stats-bar">
-        <div class="stat-item">
-            <div>TOTAL GERAKAN</div>
-            <div id="moveCount" class="stat-value">0</div>
-        </div>
-        <div id="statusInfo" style="align-self: center; font-style: italic; font-size: 14px;">Siap simulasi...</div>
+        <div>TOTAL GERAKAN: <span id="moveCount" style="font-size: 20px; color: var(--secondary);">0</span></div>
+        <div id="statusInfo">Pilih unit di ujung jalur...</div>
+        <button onclick="location.reload()" style="background:var(--danger); border:none; color:white; padding:5px 10px; border-radius:3px; cursor:pointer;">Reset</button>
     </div>
 
-    <div class="track-list" id="trackDisplay">
+    <div class="emplasemen-grid">
+        <div class="side-area">
+            <div class="section-title">AREA PERAWATAN (DIPO & CUCI)</div>
+            <div id="tracks-dipo"></div>
+            
+            <div style="margin-top:20px" class="section-title">AREA PENYIMPANAN</div>
+            <div id="tracks-storage"></div>
         </div>
 
-    <div class="controls">
-        <button class="btn-reset" onclick="confirmReset()">RESET SIMULASI</button>
-        <div style="font-size: 12px; color: #777; align-self: center;">
-            *Tip: Gunakan "SPOOR 5" atau "LEHER WESEL" sebagai jalur antara.
+        <div class="main-area">
+            <div class="section-title">JALUR UTAMA (SPOOR I - VI)</div>
+            <div id="tracks-main"></div>
+            
+            <div style="margin-top:20px" class="section-title">WESEL / LEHER LANGSIR</div>
+            <div id="tracks-leher"></div>
         </div>
     </div>
 
-    <div class="log-section">
-        <strong>LOG AKTIVITAS (AUDIT):</strong>
-        <div id="simLog">>>> Sistem Siap. Menunggu instruksi PPKA...</div>
-    </div>
+    <div id="simLog">>>> Sistem Siap. Menunggu instruksi...</div>
 </div>
 
 <script>
-    // Data berdasarkan Emplasemen Ketapang & Tugas Sabtu 21-02-2026
-    const initialState = {
-        "DIPO 1": { cap: 5, units: ["B 06604", "K3PP 06558", "K3PP 06529", "K3NG 01421", "K3 09304"] },
-        "DIPO 2": { cap: 7, units: ["K3PP 06548", "K1SS 01837", "MP3 01403", "K1 00229", "P 06409", "K1SS 01866", "K1 08618"] },
-        "LEHER WESEL": { cap: 20, units: [] },
-        "SPOOR 5": { cap: 15, units: [] },
-        "SPOOR 6": { cap: 17, units: ["M1 09401", "4 M1", "2 K3NG", "P 06802", "2 K1", "4 KRT"] },
-        "SPOOR 1": { cap: 14, units: [] },
-        "SPOOR 2": { cap: 15, units: [] },
-        "SPOOR 3": { cap: 16, units: [] },
-        "SPOOR 4": { cap: 15, units: [] }
+    // Data Emplasemen Realistic
+    const dataJalur = {
+        // Area Utama
+        "SP I": { cap: 14, area: "main", units: [] },
+        "SP II": { cap: 15, area: "main", units: [] },
+        "SP III": { cap: 16, area: "main", units: [] },
+        "SP IV": { cap: 15, area: "main", units: [] },
+        "SP V": { cap: 15, area: "main", units: [] },
+        "SP VI": { cap: 17, area: "main", units: ["M1 09401", "4 M1", "2 K3NG", "P 06802", "2 K1", "4 KRT"] },
+        
+        // Area Perawatan (Atas)
+        "DIPO LOKO 1": { cap: 5, area: "dipo", units: [] },
+        "DIPO LOKO 2": { cap: 5, area: "dipo", units: [] },
+        "DIPO KRT 1": { cap: 5, area: "dipo", units: ["B 06604", "K3PP 06558", "K3PP 06529", "K3NG 01421", "K3 09304"] },
+        "DIPO KRT 2": { cap: 7, area: "dipo", units: ["K3PP 06548", "K1SS 01837", "MP3 01403", "K1 00229", "P 06409", "K1SS 01866", "K1 08618"] },
+        "CUCI 1": { cap: 11, area: "dipo", units: [] },
+        "CUCI 2": { cap: 11, area: "dipo", units: [] },
+
+        // Area Penolong/Wesel
+        "LEHER WESEL": { cap: 20, area: "leher", units: [] },
+        "SPOOR BADUG": { cap: 5, area: "storage", units: [] }
     };
 
-    let tracks = JSON.parse(JSON.stringify(initialState));
-    let moves = 0;
     let selectedUnit = null;
     let fromTrack = null;
+    let moveCount = 0;
 
     function render() {
-        const display = document.getElementById('trackDisplay');
-        display.innerHTML = '';
+        // Reset container
+        document.getElementById('tracks-main').innerHTML = '';
+        document.getElementById('tracks-dipo').innerHTML = '';
+        document.getElementById('tracks-leher').innerHTML = '';
+        document.getElementById('tracks-storage').innerHTML = '';
 
-        for (const [name, data] of Object.entries(tracks)) {
+        for (const [name, data] of Object.entries(dataJalur)) {
             const row = document.createElement('div');
             row.className = 'track-row';
             
-            const info = `<div class="track-info">${name}<br><small>Cap: ${data.cap}</small></div>`;
-            
             let unitsHtml = data.units.map((u, i) => {
                 const isSelectable = (i === data.units.length - 1);
-                const isSelected = (selectedUnit === u && fromTrack === name && i === data.units.length -1);
-                return `<div class="unit ${isSelected ? 'selected' : ''}" 
-                             onclick="handleSelect('${name}', ${i})">${u}</div>`;
+                const isSelected = (selectedUnit === u && fromTrack === name && isSelectable);
+                return `<div class="unit ${isSelected ? 'selected' : ''}" onclick="selectUnit('${name}', ${i})">${u}</div>`;
             }).join('');
 
             row.innerHTML = `
-                ${info}
+                <div class="track-label">${name}</div>
                 <div class="track-lane">${unitsHtml}</div>
-                <button class="btn-move" onclick="handleMove('${name}')">KE SINI</button>
+                <button class="btn-move" onclick="moveTo('${name}')">MASUK</button>
             `;
-            display.appendChild(row);
+
+            // Masukkan ke area yang sesuai
+            document.getElementById(`tracks-${data.area}`).appendChild(row);
         }
-        document.getElementById('moveCount').innerText = moves;
+        document.getElementById('moveCount').innerText = moveCount;
     }
 
-    function handleSelect(trackName, index) {
-        if (index !== tracks[trackName].units.length - 1) {
-            addLog("Peringatan: Hanya gerbong terluar (paling kanan) yang bisa ditarik!", "warning");
+    function selectUnit(track, idx) {
+        if (idx !== dataJalur[track].units.length - 1) {
+            addLog("INFO: Hanya unit terluar yang bisa ditarik ke wesel.");
             return;
         }
-        selectedUnit = tracks[trackName].units[index];
-        fromTrack = trackName;
+        selectedUnit = dataJalur[track].units[idx];
+        fromTrack = track;
         document.getElementById('statusInfo').innerText = `Membawa: ${selectedUnit}`;
         render();
     }
 
-    function handleMove(targetTrack) {
-        if (!selectedUnit) return;
-        if (targetTrack === fromTrack) {
-            selectedUnit = null;
-            fromTrack = null;
-            render();
-            return;
-        }
-        if (tracks[targetTrack].units.length >= tracks[targetTrack].cap) {
-            addLog(`Gagal: Jalur ${targetTrack} Penuh!`, "danger");
+    function moveTo(target) {
+        if (!selectedUnit || target === fromTrack) return;
+        if (dataJalur[target].units.length >= dataJalur[target].cap) {
+            addLog(`ALARM: Jalur ${target} Penuh!`, "danger");
             return;
         }
 
-        tracks[fromTrack].units.pop();
-        tracks[targetTrack].units.push(selectedUnit);
-        moves++;
-        
-        addLog(`GERAKAN ${moves}: Memindahkan ${selectedUnit} dari ${fromTrack} ke ${targetTrack}`);
+        dataJalur[fromTrack].units.pop();
+        dataJalur[target].units.push(selectedUnit);
+        moveCount++;
+        addLog(`GERAKAN ${moveCount}: ${selectedUnit} -> ${target}`);
         
         selectedUnit = null;
         fromTrack = null;
-        document.getElementById('statusInfo').innerText = "Siap simulasi...";
+        document.getElementById('statusInfo').innerText = "Siap...";
         render();
     }
 
-    function addLog(msg, type = "") {
+    function addLog(msg, type="") {
         const log = document.getElementById('simLog');
-        const color = type === "danger" ? "#ff4444" : (type === "warning" ? "#ffbb33" : "#00ff00");
-        log.innerHTML += `<div style="color: ${color}">> ${msg}</div>`;
+        log.innerHTML += `<div>> ${msg}</div>`;
         log.scrollTop = log.scrollHeight;
-    }
-
-    function confirmReset() {
-        if (confirm("Reset ulang posisi gerbong ke data awal Sabtu 21-02-2026?")) {
-            location.reload();
-        }
     }
 
     render();
