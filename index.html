@@ -8,28 +8,23 @@
         :root { --primary: #002d5e; --secondary: #f39c12; --danger: #e74c3c; --success: #27ae60; --loco: #3498db; }
         body { font-family: sans-serif; background: #222; color: white; margin: 0; padding: 10px; }
         .header { text-align: center; background: var(--primary); padding: 10px; border-radius: 5px; margin-bottom: 10px; }
-
         .emplasemen-container {
             position: relative; width: 1250px; height: 600px; margin: auto;
             background-image: url('denah.png'); background-size: contain;
             background-repeat: no-repeat; background-color: white; border: 2px solid #555;
         }
-
         .track-slot {
             position: absolute; background: rgba(0, 0, 0, 0.5); 
             border: 1px solid var(--secondary); border-radius: 4px;
             padding: 2px; display: flex; flex-direction: column; gap: 2px; z-index: 10;
         }
-
         .unit-container { display: flex; flex-direction: row; gap: 4px; overflow-x: auto; }
-
         .unit {
             background: #fff; color: #000; padding: 2px 6px; font-size: 9px; 
             font-weight: bold; cursor: pointer; border-radius: 2px; border: 1px solid #999;
         }
         .unit.loco { background: var(--loco); color: white; border-color: #000; }
         .unit.selected { background: var(--secondary); color: #fff; box-shadow: 0 0 5px var(--secondary); }
-
         .btn-move { font-size: 9px; cursor: pointer; background: var(--success); color: white; border: none; padding: 2px 5px; font-weight: bold; border-radius: 3px; }
         #log { background: #000; color: #0f0; padding: 10px; font-family: monospace; height: 120px; overflow-y: auto; margin-top: 10px; font-size: 11px; border: 1px solid #444; }
     </style>
@@ -37,45 +32,41 @@
 <body>
 
 <div class="header">
-    <strong>SIMULATOR KETAPANG PRO (LOCO & SWITCH LOGIC)</strong> | 
+    <strong>SIMULATOR KETAPANG (FIXED CONNECTION)</strong> | 
     GERAKAN: <span id="moveCount">0</span> |
     <button onclick="location.reload()" style="background:var(--danger); color:white; border:none; padding:2px 10px; cursor:pointer;">Reset</button>
 </div>
 
 <div class="emplasemen-container" id="map"></div>
-<div id="log">>>> Siapkan Lokomotif di DIPO LOKO 2 untuk memulai langsir...</div>
+<div id="log">>>> Pilih Lokomotif untuk memulai langsir...</div>
 
 <script>
     const trackConfigs = {
-        /* Jalur Utama */
-        "I":   { x: 525, y: 225, w: 300, cap: 14, units: ["K1 08610"], connects: ["8E AGO"],
-               connects: ["DIPO KRT 1"], connects: ["DIPO KRT 2"],
-               connects: ["CUCI 1"], connects: ["CUCI 2"], connects: ["JALUR LUNCUR 2"] },
-        "II":  { x: 545, y: 275, w: 325, cap: 15, units: ["K1 08611"], connects: ["8E AGO"] },
-        "III": { x: 495, y: 325, w: 345, cap: 16, units: ["K1 08612"], connects: ["8E AGO"] },
-        "IV":  { x: 420, y: 375, w: 370, cap: 15, units: ["K1 08613"], connects: ["8E AGO"] },
-        "V":   { x: 350, y: 425, w: 400, cap: 15, units: ["K1 08614"], connects: ["8E AGO"] },
-        "VI":  { x: 325, y: 475, w: 400, cap: 17, units: ["M1 09401", "P 06802"], connects: ["8E AGO"] },
+        /* Jalur Utama Terhubung ke Manuver Timur (8E AGO) dan Manuver Barat (Luncur 2) */
+        "I":   { x: 525, y: 225, w: 300, cap: 14, units: ["K1 08610"], connects: ["8E AGO", "JALUR LUNCUR 2"] },
+        "II":  { x: 545, y: 275, w: 325, cap: 15, units: ["K1 08611"], connects: ["8E AGO", "JALUR LUNCUR 2"] },
+        "III": { x: 495, y: 325, w: 345, cap: 16, units: ["K1 08612"], connects: ["8E AGO", "JALUR LUNCUR 2"] },
+        "IV":  { x: 420, y: 375, w: 370, cap: 15, units: ["K1 08613"], connects: ["8E AGO", "JALUR LUNCUR 2"] },
+        "V":   { x: 350, y: 425, w: 400, cap: 15, units: ["K1 08614"], connects: ["8E AGO", "JALUR LUNCUR 2"] },
+        "VI":  { x: 325, y: 475, w: 400, cap: 17, units: ["M1 09401", "P 06802"], connects: ["8E AGO", "JALUR LUNCUR 2"] },
         
-        /* Area Dipo & Cuci (Connect ke Jalur Luncur / Area Manuver Barat) */
-        "DIPO KRT 1": { x: 50, y: 35, w: 200, cap: 5, units: ["K3 00000", "K3 11111", "K3 22222"], connects: ["CUCI 1", "CUCI 2", "DIPO LOKO 1", "DIPO LOKO 2", "JALUR LUNCUR 2"] },
-        "DIPO KRT 2": { x: 50, y: 85, w: 200, cap: 7, units: ["K1 08618"], connects: ["DIPO KRT 1", "CUCI 1", "JALUR LUNCUR 2"] },
-        "CUCI 1":     { x: 50, y: 140, w: 200, cap: 11, units: ["1 KRT"], connects: ["DIPO KRT 1", "JALUR LUNCUR 2"] },
+        /* Area Barat (Dipo & Cuci) Terhubung ke Manuver Barat (Luncur 2) */
+        "DIPO KRT 1": { x: 50, y: 35, w: 200, cap: 5, units: ["K3 00000", "K3 11111"], connects: ["JALUR LUNCUR 2"] },
+        "DIPO KRT 2": { x: 50, y: 85, w: 200, cap: 7, units: ["K1 08618"], connects: ["JALUR LUNCUR 2"] },
+        "CUCI 1":     { x: 50, y: 140, w: 200, cap: 11, units: ["1 KRT"], connects: ["JALUR LUNCUR 2"] },
         "CUCI 2":     { x: 50, y: 190, w: 200, cap: 11, units: ["2 KRT"], connects: ["JALUR LUNCUR 2"] },
         
-        /* Dipo Loko */
-        "DIPO LOKO 1": { x: 450, y: 85, w: 180, cap: 5, units: [], connects: ["DIPO KRT 1", "8E AGO"] },
-        "DIPO LOKO 2": { x: 450, y: 140, w: 180, cap: 5, units: ["LOK CC206"], connects: ["DIPO KRT 1", "8E AGO"] },
+        "DIPO LOKO 1": { x: 450, y: 85, w: 180, cap: 5, units: [], connects: ["8E AGO", "JALUR LUNCUR 2"] },
+        "DIPO LOKO 2": { x: 450, y: 140, w: 180, cap: 5, units: ["LOK CC206"], connects: ["8E AGO", "JALUR LUNCUR 2"] },
 
-        /* Jalur Manuver (Penyambung) */
-        "JALUR LUNCUR 2": { x: 150, y: 275, w: 150, cap: 6, units: [], connects: ["DIPO KRT 1", "DIPO KRT 2", "CUCI 1", "CUCI 2", "III"] },
+        "JALUR LUNCUR 2": { x: 150, y: 275, w: 150, cap: 6, units: [], connects: ["I","II","III","IV","V","VI","DIPO KRT 1","DIPO KRT 2","CUCI 1","CUCI 2"] },
         "8E AGO": { x: 1050, y: 275, w: 150, cap: 18, units: [], connects: ["I","II","III","IV","V","VI","DIPO LOKO 1","DIPO LOKO 2"] }
     };
 
-    // Data Wesel (Simulasi keterangan nomor wesel)
     const switchData = {
-        "I-8E AGO": "2, 1", "II-8E AGO": "2, 1", "III-8E AGO": "3, 2, 1", "IV-8E AGO": "5, 3, 2, 1", "V-8E AGO": "5A, 5, 3, 2, 1", "VI-8E AGO": "6, 5, 3, 2, 1",
-        "DIPO LOKO 2-8E AGO": "30A, 12, 10, 2, 1", "DIPO LOKO 2-DIPO KRT 1": "30A, 30B, 28A"
+        "I-8E AGO": "2, 1", "II-8E AGO": "2, 1", "III-8E AGO": "3, 2, 1", 
+        "IV-8E AGO": "5, 3, 2, 1", "V-8E AGO": "5A, 5, 3, 2, 1", "VI-8E AGO": "6, 5, 3, 2, 1",
+        "JALUR LUNCUR 2-DIPO KRT 1": "28A, 30B, 11A", "JALUR LUNCUR 2-CUCI 1": "11B, 12"
     };
 
     let selectedGroup = [];
@@ -89,15 +80,12 @@
             const slot = document.createElement('div');
             slot.className = 'track-slot';
             slot.style.left = data.x + 'px'; slot.style.top = data.y + 'px'; slot.style.width = data.w + 'px';
-
             const topBar = document.createElement('div');
             topBar.style.display = 'flex'; topBar.style.justifyContent = 'space-between';
             topBar.innerHTML = `<span style="font-size:9px; font-weight:bold">${name}</span>
                                <button class="btn-move" onclick="move('${name}')">IN</button>`;
-            
             const unitCont = document.createElement('div');
             unitCont.className = 'unit-container';
-            
             data.units.forEach((u, i) => {
                 const unitDiv = document.createElement('div');
                 const isSelected = (fromTrack === name && selectedGroup.includes(u));
@@ -107,7 +95,6 @@
                 unitDiv.onclick = () => select(name, i);
                 unitCont.appendChild(unitDiv);
             });
-
             slot.appendChild(topBar); slot.appendChild(unitCont);
             map.appendChild(slot);
         }
@@ -122,38 +109,26 @@
 
     function move(target) {
         if (selectedGroup.length === 0 || target === fromTrack) return;
-
-        // 1. CEK LOGIKA LOKOMOTIF: Apakah ada LOK dalam rangkaian yang dibawa?
         const hasLoco = selectedGroup.some(u => u.includes("LOK"));
-        if (!hasLoco) {
-            addLog(`Gagal: Rangkaian tidak bisa bergerak tanpa Lokomotif!`, "danger");
-            return;
-        }
-
-        // 2. CEK LOGIKA JALUR: Apakah asal dan tujuan terhubung langsung?
+        if (!hasLoco) { addLog(`Gagal: Rangkaian wajib ada Lokomotif!`, "danger"); return; }
+        
         const isConnected = trackConfigs[fromTrack].connects.includes(target) || trackConfigs[target].connects.includes(fromTrack);
-        if (!isConnected) {
-            addLog(`Gagal: Jalur ${fromTrack} & ${target} tidak terhubung langsung! Gunakan jalur manuver (8E AGO / Luncur).`, "danger");
-            return;
-        }
+        if (!isConnected) { addLog(`Gagal: Jalur ${fromTrack} & ${target} tidak terhubung!`, "danger"); return; }
 
         if (trackConfigs[target].units.length + selectedGroup.length > trackConfigs[target].cap) {
             addLog(`Gagal: Jalur ${target} Penuh!`, "danger"); return;
         }
 
-        // Eksekusi Pindah
         const numToMove = selectedGroup.length;
         trackConfigs[fromTrack].units.splice(trackConfigs[fromTrack].units.length - numToMove, numToMove);
         trackConfigs[target].units.push(...selectedGroup);
         
-        // Cari info wesel
         const route = `${fromTrack}-${target}`;
         const routeAlt = `${target}-${fromTrack}`;
-        const switches = switchData[route] || switchData[routeAlt] || "??";
+        const switches = switchData[route] || switchData[routeAlt] || "Jalur Utama";
 
         moveCount++;
         addLog(`GERAKAN ${moveCount}: ${numToMove} Unit (${fromTrack} -> ${target}) lewat wesel ${switches}`);
-        
         selectedGroup = []; fromTrack = null;
         render();
     }
@@ -164,7 +139,6 @@
         l.innerHTML += `<div style="color:${color}">> ${m}</div>`;
         l.scrollTop = l.scrollHeight;
     }
-
     render();
 </script>
 </body>
