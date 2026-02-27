@@ -83,16 +83,24 @@
             background: #fff;
             line-height: 0; /* hapus gap bawah inline img */
         }
+        /* Container Utama */
         .emplasemen-container {
-            position: relative;
-            /* Canvas mengikuti rasio ~3:1 denah asli, lebar penuh layar */
-            width: 1440px; height: 480px;
-            background-image: url('denah.png');
-            background-size: cover;
+            position: relative; 
+            /* Menggunakan max-width agar tidak pecah di layar kecil */
+            width: 1440px; 
+            height: 480px; 
+            background-image: url('denah.png'); 
+            /* Contain memastikan seluruh denah terlihat tanpa terpotong */
+            background-size: contain; 
             background-position: center center;
-            background-repeat: no-repeat;
-            background-color: #fff;
+            background-repeat: no-repeat; 
+            background-color: #ffffff; 
+            border: 3px solid #555;
+            border-radius: 8px;
             user-select: none;
+            /* Pusatkan kontainer jika layar lebih lebar dari 1440px */
+            margin: 0 auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
         /* ─── TRACK SLOT ─── */
