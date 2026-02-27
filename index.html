@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulasi Langsir Ketapang v3</title>
+    <title>Simulasi Langsir Ketapang v4</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -79,16 +79,19 @@
         .map-wrapper {
             border: 1px solid var(--border);
             border-radius: 0 0 3px 3px;
-            overflow: hidden;
-            background: #fff;
+            overflow-x: auto;
+            background: #0d1a10;
         }
         .emplasemen-container {
             position: relative;
-            width: 1250px; height: 600px;
-            background-image: url('denah.png');
-            background-size: contain; background-repeat: no-repeat;
-            background-color: #fff;
+            width: 1440px; height: 640px;
+            background-color: #0d1a10;
             user-select: none;
+        }
+        #svgDenah {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
         }
 
         /* ─── TRACK SLOT ─── */
@@ -246,7 +249,7 @@
 
 <!-- HEADER -->
 <div class="header">
-    <div class="header-title">SIMULATOR LANGSIR <span>KETAPANG</span> <small style="color:#5dade2;font-size:10px;font-weight:400"> v3</small></div>
+    <div class="header-title">SIMULATOR LANGSIR <span>KETAPANG</span> <small style="color:#5dade2;font-size:10px;font-weight:400"> v4</small></div>
 
     <div class="hdr-stat">
         <div class="hdr-stat-val" id="moveCount">0</div>
@@ -273,7 +276,304 @@
 
 <!-- MAP -->
 <div class="map-wrapper">
-    <div class="emplasemen-container" id="map"></div>
+  <div class="emplasemen-container" id="map">
+
+    <!-- ═══════════════════════════════════════════════════
+         SVG DENAH SKEMATIK EMPLASEMEN KETAPANG
+         Berdasarkan denah resmi KAI KM.18+484
+         Koordinat dalam px (canvas 1440×640)
+
+         ZONA:
+         ┌─ BARAT (kiri) ──────────────────── TIMUR (kanan) ─┐
+         │  Dipo KRT 1,2 + Cuci 1,2 (y≈60–200)              │
+         │  Jalur Putar 29B/29C (y≈500–600)                  │
+         │  Jalur Utama I–VI (y≈230–560) miring ke timur     │
+         │  S.18 garis vertikal tengah (x≈620)               │
+         │  Jalur Bongkar (antara I–II sisi timur)           │
+         │  8E AGO + keluar ke Jember (x≈1200–1440)          │
+         └────────────────────────────────────────────────────┘
+    ════════════════════════════════════════════════════════ -->
+    <svg id="svgDenah" viewBox="0 0 1440 640" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Gaya dasar rel -->
+        <style>
+          .rel       { stroke:#3a7a3a; stroke-width:2; fill:none; stroke-linecap:round; }
+          .rel-main  { stroke:#4aaa4a; stroke-width:2.5; }
+          .rel-dipo  { stroke:#2a6a5a; stroke-width:1.8; }
+          .rel-ago   { stroke:#5aba5a; stroke-width:2.5; }
+          .rel-dim   { stroke:#2a5a2a; stroke-width:1.5; stroke-dasharray:4,3; }
+          .wesel-dot { fill:#f5a623; }
+          .lbl       { font-family:'Roboto Condensed',Arial,sans-serif; font-size:10px; fill:#7ac87a; font-weight:700; }
+          .lbl-sm    { font-family:'Roboto Condensed',Arial,sans-serif; font-size:9px;  fill:#5a9a5a; }
+          .lbl-wesel { font-family:'Roboto Mono','Courier New',monospace; font-size:8px; fill:#f5a623; }
+          .lbl-title { font-family:'Roboto Condensed',Arial,sans-serif; font-size:11px; fill:#aadaaa; font-weight:700; letter-spacing:0.5px; }
+          .s18-line  { stroke:#f5a623; stroke-width:1; stroke-dasharray:6,4; opacity:0.6; }
+          .s18-lbl   { font-family:'Roboto Mono',monospace; font-size:9px; fill:#f5a623; opacity:0.8; }
+          .area-box  { fill:rgba(20,50,20,0.3); stroke:#2a5a2a; stroke-width:1; rx:3; }
+        </style>
+      </defs>
+
+      <!-- ══════════════════════════════════════════════
+           AREA DIPO (kiri atas)
+      ══════════════════════════════════════════════ -->
+
+      <!-- Dipo Kereta 1 — horizontal dari x=30 ke x=290, y=52 -->
+      <line class="rel rel-dipo" x1="30"  y1="52"  x2="290" y2="52"/>
+      <!-- Dipo Kereta 2 — y=90 -->
+      <line class="rel rel-dipo" x1="30"  y1="90"  x2="290" y2="90"/>
+      <!-- Cuci 1 — y=128 -->
+      <line class="rel rel-dipo" x1="30"  y1="128" x2="290" y2="128"/>
+      <!-- Cuci 2 — y=166 -->
+      <line class="rel rel-dipo" x1="30"  y1="166" x2="290" y2="166"/>
+
+      <!-- Buffer stop kiri dipo -->
+      <line class="rel rel-dipo" x1="30" y1="46"  x2="30" y2="58"/>
+      <line class="rel rel-dipo" x1="30" y1="84"  x2="30" y2="96"/>
+      <line class="rel rel-dipo" x1="30" y1="122" x2="30" y2="134"/>
+      <line class="rel rel-dipo" x1="30" y1="160" x2="30" y2="172"/>
+
+      <!-- Label jalur dipo -->
+      <text class="lbl-title" x="36" y="48">JALUR DIPO KERETA 1</text>
+      <text class="lbl-title" x="36" y="86">JALUR DIPO KERETA 2</text>
+      <text class="lbl-title" x="36" y="124">JALUR CUCI 1</text>
+      <text class="lbl-title" x="36" y="162">JALUR CUCI 2</text>
+
+      <!-- Dipo Loko 1 — dari wesel 30A ke kanan, y=108 -->
+      <line class="rel rel-dipo" x1="370" y1="108" x2="600" y2="108"/>
+      <line class="rel rel-dipo" x1="370" y1="136" x2="600" y2="136"/>
+      <text class="lbl-title"   x="400"  y="104">JALUR DIPO LOKO 1</text>
+      <text class="lbl-title"   x="400"  y="132">JALUR DIPO LOKO 2</text>
+      <!-- Buffer stop kanan dipo loko -->
+      <line class="rel rel-dipo" x1="600" y1="102" x2="600" y2="114"/>
+      <line class="rel rel-dipo" x1="600" y1="130" x2="600" y2="142"/>
+
+      <!-- ══════════════════════════════════════════════
+           WESEL AREA BARAT-DIPO  (kiri, x≈290–380)
+      ══════════════════════════════════════════════ -->
+
+      <!-- Wesel 28A: Dipo KRT 1 & 2 bergabung ke jalur dipo tengah → y≈52/90 join ke y=71 -->
+      <line class="rel rel-dipo" x1="290" y1="52"  x2="330" y2="71"/>
+      <line class="rel rel-dipo" x1="290" y1="90"  x2="330" y2="71"/>
+      <circle class="wesel-dot" cx="290" cy="52"  r="3.5"/>
+      <circle class="wesel-dot" cx="290" cy="90"  r="3.5"/>
+      <text class="lbl-wesel" x="292" y="67">28A</text>
+
+      <!-- Wesel 11B: Cuci 1 & 2 bergabung, y≈128/166 join ke y=147 -->
+      <line class="rel rel-dipo" x1="290" y1="128" x2="330" y2="147"/>
+      <line class="rel rel-dipo" x1="290" y1="166" x2="330" y2="147"/>
+      <circle class="wesel-dot" cx="290" cy="128" r="3.5"/>
+      <circle class="wesel-dot" cx="290" cy="166" r="3.5"/>
+      <text class="lbl-wesel" x="292" y="155">11B</text>
+
+      <!-- Wesel 11A: dipo KRT (y=71) + cuci (y=147) join ke y=109 -->
+      <line class="rel rel-dipo" x1="330" y1="71"  x2="360" y2="109"/>
+      <line class="rel rel-dipo" x1="330" y1="147" x2="360" y2="109"/>
+      <circle class="wesel-dot" cx="330" cy="71"  r="3.5"/>
+      <circle class="wesel-dot" cx="330" cy="147" r="3.5"/>
+      <text class="lbl-wesel" x="338" y="107">11A</text>
+
+      <!-- Wesel 30A: dari y=109 ke Dipo Loko 1 (y=108) dan 30B ke Dipo Loko 2 (y=136) -->
+      <line class="rel rel-dipo" x1="360" y1="109" x2="370" y2="108"/>
+      <line class="rel rel-dipo" x1="360" y1="109" x2="370" y2="136"/>
+      <circle class="wesel-dot" cx="360" cy="109" r="3.5"/>
+      <text class="lbl-wesel" x="338" y="122">30A</text>
+      <text class="lbl-wesel" x="356" y="132">30B</text>
+
+      <!-- ══════════════════════════════════════════════
+           WESEL 12 — join dipo ke jalur utama (x≈430, y≈109 ke y=230)
+      ══════════════════════════════════════════════ -->
+      <!-- Dari dipo loko (x=370,y=108-136) menyambung ke jalur I area tengah via wesel 12 -->
+      <line class="rel rel-dipo" x1="370" y1="122" x2="430" y2="122"/>
+      <line class="rel rel-dipo" x1="430" y1="122" x2="470" y2="200"/>
+      <circle class="wesel-dot" cx="430" cy="122" r="3.5"/>
+      <text class="lbl-wesel"   x="432" y="118">12</text>
+
+      <!-- Wesel 10 — di jalur I sebelah kiri S.18 -->
+      <circle class="wesel-dot" cx="490" cy="216" r="3.5"/>
+      <text class="lbl-wesel"   x="492" y="213">10</text>
+
+      <!-- Wesel 9 -->
+      <circle class="wesel-dot" cx="530" cy="222" r="3.5"/>
+      <text class="lbl-wesel"   x="533" y="219">9</text>
+
+      <!-- ══════════════════════════════════════════════
+           JALUR UTAMA I–VI  (body jalur horizontal + miring ke timur)
+           Ujung barat miring konvergen, tengah–timur miring
+           Referensi S.18 x=620
+      ══════════════════════════════════════════════ -->
+
+      <!-- Jalur I: y=240 barat → y=238 timur (hampir lurus) -->
+      <line class="rel rel-main" x1="470" y1="218" x2="1160" y2="232"/>
+      <!-- Jalur II: y=278 barat → y=278 timur -->
+      <line class="rel rel-main" x1="450" y1="268" x2="1160" y2="268"/>
+      <!-- Jalur III: miring turun ke timur -->
+      <line class="rel rel-main" x1="400" y1="318" x2="1100" y2="300"/>
+      <!-- Jalur IV -->
+      <line class="rel rel-main" x1="340" y1="368" x2="1060" y2="336"/>
+      <!-- Jalur V -->
+      <line class="rel rel-main" x1="300" y1="418" x2="1020" y2="372"/>
+      <!-- Jalur VI -->
+      <line class="rel rel-main" x1="270" y1="468" x2="980"  y2="406"/>
+
+      <!-- Label jalur utama di tengah -->
+      <text class="lbl" x="640" y="228">I</text>
+      <text class="lbl" x="640" y="265">II</text>
+      <text class="lbl" x="640" y="298">III</text>
+      <text class="lbl" x="640" y="334">IV</text>
+      <text class="lbl" x="640" y="370">V</text>
+      <text class="lbl" x="640" y="405">VI</text>
+
+      <!-- ══════════════════════════════════════════════
+           WESEL SISI BARAT JALUR UTAMA  (x≈300–530)
+      ══════════════════════════════════════════════ -->
+
+      <!-- Wesel 7: jalur I & II bergabung (y=218/268) ke luncur 2 -->
+      <circle class="wesel-dot" cx="468" cy="268" r="3.5"/>
+      <text class="lbl-wesel"   x="472" y="265">7</text>
+
+      <!-- Wesel 8: jalur luncur 2 berpisah -->
+      <circle class="wesel-dot" cx="420" cy="270" r="3.5"/>
+      <text class="lbl-wesel"   x="424" y="267">8</text>
+
+      <!-- Wesel 14: jalur luncur 2 ke arah barat laut -->
+      <circle class="wesel-dot" cx="380" cy="270" r="3.5"/>
+      <text class="lbl-wesel"   x="384" y="267">14</text>
+
+      <!-- Jalur Luncur 2 — berbelok ke kiri atas -->
+      <path class="rel rel-dim" d="M380,270 Q300,260 230,250 L100,248"/>
+      <text class="lbl-sm" x="110" y="244">JALUR LUNCUR 2</text>
+      <!-- Buffer stop -->
+      <line class="rel rel-dipo" x1="100" y1="243" x2="100" y2="253"/>
+
+      <!-- Wesel 11 -->
+      <circle class="wesel-dot" cx="400" cy="318" r="3.5"/>
+      <text class="lbl-wesel"   x="404" y="315">11</text>
+
+      <!-- Wesel 13 -->
+      <circle class="wesel-dot" cx="360" cy="360" r="3.5"/>
+      <text class="lbl-wesel"   x="364" y="357">13</text>
+
+      <!-- Wesel 15 -->
+      <circle class="wesel-dot" cx="340" cy="380" r="3.5"/>
+      <text class="lbl-wesel"   x="344" y="377">15</text>
+
+      <!-- Jalur Luncur 4 — berbelok ke kiri -->
+      <path class="rel rel-dim" d="M340,380 Q270,375 210,370 L100,368"/>
+      <text class="lbl-sm" x="110" y="364">JALUR LUNCUR 4</text>
+      <line class="rel rel-dipo" x1="100" y1="363" x2="100" y2="373"/>
+
+      <!-- Wesel 16, 17, 18 — jalur putar (bawah kiri) -->
+      <circle class="wesel-dot" cx="290" cy="440" r="3.5"/>
+      <text class="lbl-wesel"   x="294" y="437">16</text>
+      <circle class="wesel-dot" cx="250" cy="480" r="3.5"/>
+      <text class="lbl-wesel"   x="254" y="477">17</text>
+      <circle class="wesel-dot" cx="200" cy="520" r="3.5"/>
+      <text class="lbl-wesel"   x="204" y="517">18</text>
+
+      <!-- ══════════════════════════════════════════════
+           JALUR PUTAR 29B / 29C  (pojok kiri bawah)
+      ══════════════════════════════════════════════ -->
+      <!-- Jalur masuk putar dari VI via wesel 16 -->
+      <line class="rel rel-dipo" x1="270" y1="468" x2="290" y2="440"/>
+      <!-- Loop lengkung 29B -->
+      <path class="rel rel-dim" d="M290,440 Q260,490 200,520 Q140,550 110,540 Q80,530 90,500 Q100,460 140,450 Q200,430 240,438"/>
+      <text class="lbl-sm" x="108" y="538">29B</text>
+      <text class="lbl-sm" x="82"  y="520">29C</text>
+      <text class="lbl-title" x="120" y="580">JALUR PUTAR</text>
+
+      <!-- ══════════════════════════════════════════════
+           SEMBOYAN 18 — garis vertikal penanda
+      ══════════════════════════════════════════════ -->
+      <line class="s18-line" x1="620" y1="190" x2="620" y2="430"/>
+      <text class="s18-lbl"  x="623" y="186">S.18</text>
+      <!-- Tanda panah kecil di atas dan bawah -->
+      <polygon points="620,192 615,202 625,202" fill="#f5a623" opacity="0.6"/>
+      <polygon points="620,428 615,418 625,418" fill="#f5a623" opacity="0.6"/>
+
+      <!-- ══════════════════════════════════════════════
+           WESEL SISI TIMUR  (x≈950–1160)
+      ══════════════════════════════════════════════ -->
+      <!-- Wesel 4: Jalur I berpisah ke bongkar -->
+      <circle class="wesel-dot" cx="1060" cy="234" r="3.5"/>
+      <text class="lbl-wesel"   x="1064" y="231">4</text>
+
+      <!-- Wesel 2: Jalur I & II join -->
+      <circle class="wesel-dot" cx="1100" cy="252" r="3.5"/>
+      <text class="lbl-wesel"   x="1104" y="249">2</text>
+
+      <!-- Wesel 3: join III -->
+      <circle class="wesel-dot" cx="1060" cy="302" r="3.5"/>
+      <text class="lbl-wesel"   x="1064" y="299">3</text>
+
+      <!-- Wesel 5: join IV -->
+      <circle class="wesel-dot" cx="1020" cy="338" r="3.5"/>
+      <text class="lbl-wesel"   x="1024" y="335">5</text>
+
+      <!-- Wesel 5A: join V -->
+      <circle class="wesel-dot" cx="990"  cy="370" r="3.5"/>
+      <text class="lbl-wesel"   x="994"  y="367">5A</text>
+
+      <!-- Wesel 6: join VI -->
+      <circle class="wesel-dot" cx="960"  cy="402" r="3.5"/>
+      <text class="lbl-wesel"   x="964"  y="399">6</text>
+
+      <!-- Wesel 1: semua join ke jalur AGO -->
+      <circle class="wesel-dot" cx="1150" cy="260" r="4"/>
+      <text class="lbl-wesel"   x="1154" y="257">1</text>
+
+      <!-- Garis konvergen timur: semua jalur menyatu ke wesel 1 -->
+      <line class="rel rel-main" x1="1100" y1="252" x2="1150" y2="260"/>
+      <line class="rel rel-main" x1="1060" y1="302" x2="1100" y2="252"/>
+      <line class="rel rel-main" x1="1020" y1="338" x2="1060" y2="302"/>
+      <line class="rel rel-main" x1="990"  y1="370" x2="1020" y2="338"/>
+      <line class="rel rel-main" x1="960"  y1="402" x2="990"  y2="370"/>
+      <!-- Lanjut ke AGO dari wesel 1 -->
+      <line class="rel rel-ago" x1="1150" y1="260" x2="1380" y2="278"/>
+
+      <!-- ══════════════════════════════════════════════
+           JALUR BONGKAR  (antara jalur I dan II, sisi timur)
+      ══════════════════════════════════════════════ -->
+      <!-- Keluar dari wesel 4 ke atas kanan -->
+      <path class="rel rel-dim" d="M1060,234 Q1080,224 1110,220 L1240,215"/>
+      <text class="lbl-sm" x="1090" y="213">JALUR BONGKAR</text>
+      <!-- Buffer stop -->
+      <line class="rel rel-dipo" x1="1240" y1="210" x2="1240" y2="220"/>
+
+      <!-- ══════════════════════════════════════════════
+           JALUR TANGKAP (di bawah jalur VI sisi timur)
+      ══════════════════════════════════════════════ -->
+      <path class="rel rel-dim" d="M960,402 Q980,420 1000,430 L1080,438"/>
+      <text class="lbl-sm" x="990" y="448">JALUR TANGKAP</text>
+      <line class="rel rel-dipo" x1="1080" y1="433" x2="1080" y2="443"/>
+
+      <!-- ══════════════════════════════════════════════
+           AREA 8E AGO — jalur holding sebelum keluar
+      ══════════════════════════════════════════════ -->
+      <!-- Kotak area 8E AGO -->
+      <rect x="1200" y="250" width="130" height="36" rx="3"
+            fill="rgba(30,80,30,0.35)" stroke="#3a7a3a" stroke-width="1"/>
+      <text class="lbl-title" x="1210" y="266">8E AGO</text>
+      <text class="lbl-sm"    x="1210" y="279">HOLDING</text>
+
+      <!-- Rel masuk 8E AGO -->
+      <line class="rel rel-ago" x1="1330" y1="268" x2="1380" y2="278"/>
+
+      <!-- Keluar ke Jember / Argopuro -->
+      <line class="rel rel-ago" x1="1380" y1="278" x2="1430" y2="284"/>
+      <!-- Simbol ujung rel (tanda panah keluar) -->
+      <polygon points="1430,284 1420,278 1420,290" fill="#5aba5a"/>
+      <text class="lbl-title" x="1390" y="298">→ AGO / JEMBER</text>
+
+      <!-- ══════════════════════════════════════════════
+           LABEL KOMPAS & JUDUL AREA
+      ══════════════════════════════════════════════ -->
+      <text x="16"   y="620" font-family="'Roboto Condensed',Arial" font-size="10" fill="#2a6a2a">← BARAT</text>
+      <text x="1380" y="620" font-family="'Roboto Condensed',Arial" font-size="10" fill="#2a6a2a">TIMUR →</text>
+      <text x="660"  y="620" font-family="'Roboto Condensed',Arial" font-size="9"  fill="#3a5a3a" text-anchor="middle">KM. 18 + 484</text>
+
+    </svg><!-- end #svgDenah -->
+
+  </div><!-- end .emplasemen-container -->
 </div>
 <div class="log-wrap" id="log"></div>
 
@@ -312,20 +612,28 @@ const SARANA_TYPES = [
 //  DATA JALUR
 // ══════════════════════════════════════════
 const DEFAULT_TRACKS = {
-    "I":   { x: 525, y: 225, w: 300, cap: 14, units: ["K1 08610"],               westX: 525,  eastX: 825  },
-    "II":  { x: 545, y: 275, w: 325, cap: 15, units: ["K1 08611"],               westX: 545,  eastX: 870  },
-    "III": { x: 495, y: 325, w: 345, cap: 16, units: ["K1 08612"],               westX: 495,  eastX: 840  },
-    "IV":  { x: 420, y: 375, w: 370, cap: 15, units: ["K1 08613"],               westX: 420,  eastX: 790  },
-    "V":   { x: 350, y: 425, w: 400, cap: 15, units: ["K1 08614"],               westX: 350,  eastX: 750  },
-    "VI":  { x: 325, y: 475, w: 400, cap: 17, units: ["M1 09401","P 06802"],     westX: 325,  eastX: 725  },
-    "DIPO LOKO":      { x: 450, y: 140, w: 180, cap: 5,  units: ["LOK CC206 01"],      westX: 450, eastX: 630  },
-    "DIPO KRT 1":     { x: 50,  y: 35,  w: 200, cap: 5,  units: ["K3 00000","K3 11111"],westX: 50,  eastX: 250  },
-    "DIPO KRT 2":     { x: 50,  y: 85,  w: 200, cap: 7,  units: ["K1 08618"],          westX: 50,  eastX: 250  },
-    "CUCI 1":         { x: 50,  y: 140, w: 200, cap: 11, units: ["1 KRT"],             westX: 50,  eastX: 250  },
-    "CUCI 2":         { x: 50,  y: 190, w: 200, cap: 11, units: ["2 KRT"],             westX: 50,  eastX: 250  },
-    "JALUR LUNCUR 2": { x: 150, y: 275, w: 150, cap: 6,  units: [],                    westX: 150, eastX: 300  },
-    "JALUR LUNCUR 4": { x: 150, y: 375, w: 150, cap: 6,  units: [],                    westX: 150, eastX: 300  },
-    "8E AGO":         { x: 1050,y: 275, w: 150, cap: 18, units: [],                    westX: 1050,eastX: 1200 },
+    // Jalur Utama I–VI: slot diletakkan di tengah jalur antara S.18 dan wesel timur
+    // y disesuaikan dengan garis SVG masing-masing jalur
+    "I":            { x: 640, y: 222, w: 310, cap: 14, units: ["K1 08610"],              westX: 470,  eastX: 1060 },
+    "II":           { x: 640, y: 258, w: 310, cap: 15, units: ["K1 08611"],              westX: 450,  eastX: 1100 },
+    "III":          { x: 640, y: 292, w: 310, cap: 16, units: ["K1 08612"],              westX: 400,  eastX: 1060 },
+    "IV":           { x: 640, y: 326, w: 310, cap: 15, units: ["K1 08613"],              westX: 340,  eastX: 1020 },
+    "V":            { x: 640, y: 360, w: 310, cap: 15, units: ["K1 08614"],              westX: 300,  eastX: 990  },
+    "VI":           { x: 640, y: 394, w: 310, cap: 17, units: ["M1 09401","P 06802"],    westX: 270,  eastX: 960  },
+
+    // Area Dipo (kiri atas)
+    "DIPO LOKO":    { x: 400, y: 100, w: 180, cap: 5,  units: ["LOK CC206 01"],          westX: 370,  eastX: 600  },
+    "DIPO KRT 1":   { x: 36,  y: 42,  w: 220, cap: 5,  units: ["K3 00000","K3 11111"],   westX: 36,   eastX: 290  },
+    "DIPO KRT 2":   { x: 36,  y: 80,  w: 220, cap: 7,  units: ["K1 08618"],              westX: 36,   eastX: 290  },
+    "CUCI 1":       { x: 36,  y: 118, w: 220, cap: 11, units: ["1 KRT"],                 westX: 36,   eastX: 290  },
+    "CUCI 2":       { x: 36,  y: 156, w: 220, cap: 11, units: ["2 KRT"],                 westX: 36,   eastX: 290  },
+
+    // Jalur Luncur (barat, sebelum S.18)
+    "JALUR LUNCUR 2": { x: 110, y: 238, w: 130, cap: 6,  units: [],                      westX: 100,  eastX: 380  },
+    "JALUR LUNCUR 4": { x: 110, y: 358, w: 130, cap: 6,  units: [],                      westX: 100,  eastX: 340  },
+
+    // Holding timur sebelum keluar ke AGO/Jember
+    "8E AGO":         { x: 1205,y: 252, w: 120, cap: 18, units: [],                      westX: 1150, eastX: 1380 },
 };
 
 const CONNECTIONS = {
@@ -410,7 +718,8 @@ function getSwitch(from, to) {
 // ══════════════════════════════════════════
 function render() {
     const map = document.getElementById('map');
-    map.innerHTML = '';
+    // Pertahankan SVG, hapus hanya track-slot lama
+    Array.from(map.querySelectorAll('.track-slot')).forEach(el => el.remove());
 
     for (const [name, data] of Object.entries(trackConfigs)) {
         const slot = document.createElement('div');
@@ -765,7 +1074,7 @@ function closePopup(e) {
 // ══════════════════════════════════════════
 //  SAVE / LOAD / EXPORT / IMPORT
 // ══════════════════════════════════════════
-const STORAGE_KEY = 'langsir_ketapang_v3';
+const STORAGE_KEY = 'langsir_ketapang_v4';
 
 function getSnapshot() {
     const snap = {};
@@ -872,7 +1181,7 @@ function addLog(msg, type='info') {
             addLog(`📂 Auto-load template terakhir (${new Date(snap.savedAt).toLocaleString('id-ID')})`, 'info');
         } catch(_) {}
     }
-    addLog('Simulator Langsir Ketapang v3 — siap. Klik kanan sarana untuk hapus, tombol + untuk tambah.', 'info');
+    addLog('Simulator Langsir Ketapang v4 — Denah SVG aktif. Klik kanan sarana untuk hapus, tombol + untuk tambah.', 'info');
     render();
 
     // Deselect jika klik di peta tapi bukan unit
