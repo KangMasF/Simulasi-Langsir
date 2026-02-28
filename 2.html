@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulasi Langsir Ketapang v7 (Optimasi)</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --primary:  #002244;
+    --border:   #1e3a5f;
+    --secondary:#f5a623;
+    --danger:   #d0021b;
+    --success:  #27ae60;
+    --loco:     #1a6fa8;
+    --selected: #e07b10;
+    --text:     #dce8f5;
+    --sans:     'Roboto Condensed', Arial Narrow, Arial, sans-serif;
+    --mono:     'Roboto Mono', 'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: #111820; color: var(--text); padding: 8px; min-height: 100vh; }
+
+/* =========================================== */
+/* 🎯 KONFIGURASI TAMPILAN - MODIFIKASI DI SINI!
+/* =========================================== */
+.header {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    background: var(--primary); border-bottom: 3px solid var(--secondary);
+    padding: 6px 12px; border-radius: 4px 4px 0 0;
+}
+.header-title { font-size: 15px; font-weight: 700; letter-spacing: 1.5px; color: #fff; flex: 1; }
+.header-title span { color: var(--secondary); }
+.hdr-stat { display: flex; flex-direction: column; align-items: center; min-width: 44px; }
+.hdr-stat-val { font-size: 20px; font-weight: 700; line-height: 1; color: var(--secondary); font-family: var(--mono); }
+.hdr-stat-lbl { font-size: 9px; color: #7a9cc0; letter-spacing: 1px; text-transform: uppercase; }
+.hdr-divider  { width: 1px; height: 34px; background: var(--border); margin: 0 2px; }
+.hdr-btn {
+    font-family: var(--sans); font-size: 11px; font-weight: 700;
+    border: none; padding: 4px 10px; cursor: pointer; border-radius: 3px;
+    transition: opacity .15s, background .15s; white-space: nowrap;
+}
+.hdr-btn:hover { opacity: .82; }
+
+/* =========================================== */
+/* 🎨 WARNA TOMBOL - Jangan diubah */
+/* =========================================== */
+.btn-layout { background: #5a3a00; color: #f5a623; }
+.btn-layout.active { background: #f5a623; color: #000; }
+.btn-snap   { background: #2a2a2a; color: #aaa; }
+.btn-snap.active { background: #1a5a3a; color: #2ecc71; }
+.btn-save   { background: var(--success); color: #fff; }
+.btn-load   { background: #17568a; color: #fff; }
+.btn-export { background: #444; color: #fff; }
+.btn-reset  { background: var(--danger); color: #fff; }
+
+/* =========================================== */
+/* 📊 INFO BAR */
+/* =========================================== */
+.info-bar {
+    background: #07101c; border: 1px solid var(--border); border-top: none;
+    padding: 3px 12px; font-family: var(--mono); font-size: 10px; color: #5a8ab0;
+    display: flex; justify-content: space-between; margin-bottom: 5px;
+}
+.info-bar .hint { color: var(--secondary); font-weight: 700; }
+#layoutLabel { color: #f5a623; font-weight: 700; display: none; }
+
+/* =========================================== */
+/* 🗺️ MAP */
+/* =========================================== */
+.map-wrapper { border: 1px solid var(--border); border-radius: 0 0 3px 3px; overflow-x: auto; background: #fff; line-height: 0; }
+.emplasemen-container {
+    position: relative;
+    width: 1440px; height: 480px;
+    background-image: url('denah.png');
+    background-size: contain;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-color: #ffffff;
+    border: 3px solid #555;
+    border-radius: 8px;
+    user-select: none;
+    margin: 0 auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+/* =========================================== */
+/* 🚆 TRACK SLOT - ATUR KETINGGIAN KOLOM DI SINI!
+/* =========================================== */
+.track-slot {
+    position: absolute;
+    background: rgba(0, 10, 28, 0.80);
+    border: 0px solid rgba(100, 160, 220, 0.35);
+    border-radius: 2px; 
+    padding: 0px 0px;        /* 🔼 KECILKAN: padding kolom (atas/bawah) */
+    z-index: 10; backdrop-filter: blur(1px);
+}
+body.layout-mode .track-slot {
+    border: 1px solid rgba(245,166,35,0.7) !important;
+    cursor: grab;
+}
+body.layout-mode .track-slot:active { cursor: grabbing; }
+body.layout-mode .track-slot .slot-drag-handle { display: flex; }
+
+.slot-drag-handle {
+    display: none;
+    align-items: center; justify-content: center;
+    color: var(--secondary); font-size: 10px;
+    cursor: grab; padding: 0 2px; flex-shrink: 0; 
+    line-height: 0.8;        /* 🔼 KECILKAN: tinggi ikon drag (⠿) */
+}
+
+/* Header jalur */
+.slot-header {
+    display: flex; align-items: center; gap: 0px;
+    flex-wrap: nowrap; 
+    margin-bottom: 0px;      /* 🔼 KECILKAN: jarak header ke unit row */
+}
+.slot-name {
+    font-family: var(--sans); 
+    font-size: 8px;          /* 🔼 KECILKAN: ukuran font nama jalur */
+    font-weight: 700;
+    color: #90caff; white-space: nowrap; letter-spacing: .2px; flex-shrink: 0;
+}
+.move-btns-inline { display: flex; gap: 2px; flex-wrap: nowrap; flex: 1; }
+.btn-move {
+    font-family: var(--sans); font-size: 7px; font-weight: 700;  /* 🔼 KECILKAN */
+    background: #0d4a28; color: #2ecc71;
+    border: 1px solid #1a6a35; padding: 0px 3px;  /* 🔼 KECILKAN padding */
+    border-radius: 2px; cursor: pointer; transition: background .1s;
+    white-space: nowrap; flex-shrink: 0;
+}
+.btn-move:hover { background: #1a6035; }
+.slot-cap { 
+    font-family: var(--mono); 
+    font-size: 7px;          /* 🔼 KECILKAN: ukuran font kapasitas */
+    color: rgba(100,160,220,0.5); flex-shrink: 0; 
+}
+.btn-add-unit {
+    font-size: 10px; font-weight: 700; line-height: 1;  /* 🔼 KECILKAN */
+    background: #0a3d1f; color: #2ecc71;
+    border: 1px solid #1a7040; border-radius: 2px;
+    width: 12px; height: 12px;  /* 🔼 KECILKAN: ukuran tombol + */
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background .1s;
+}
+.btn-add-unit:hover { background: #1a6035; }
+
+/* =========================================== */
+/* 🚋 UNIT ROW - ATUR BARIS KERETA DI SINI!
+/* =========================================== */
+.unit-row { 
+    display: flex; flex-direction: row; 
+    gap: 1px;                /* 🔼 KECILKAN: jarak antar chip */
+    min-height: 12px;        /* 🔼 KECILKAN: tinggi minimal baris */
+    flex-wrap: nowrap; 
+}
+
+/* Chip unit kereta */
+.unit {
+    font-family: var(--mono);
+    background: rgba(220,235,248,0.92); color: #0d1a2a;
+    padding: 0px 2px;        /* 🔼 KECILKAN: padding dalam chip (0px = rapat) */
+    font-size: 8px;          /* 🔼 KECILKAN: ukuran font unit */
+    font-weight: 700;
+    cursor: pointer; border-radius: 2px;
+    border: 0px solid rgba(136,168,200,0.7);
+    white-space: nowrap; flex-shrink: 0; position: relative;
+    transition: box-shadow .08s; display: flex; align-items: center; gap: 1px;
+    line-height: 1.2;        /* 🔼 KECILKAN: tinggi baris teks */
+}
+.unit:hover { box-shadow: 0 1px 5px rgba(0,0,0,.6); }
+.unit.loco { background: var(--loco); color: #fff; border: 1px solid #0f4a7a; }
+.unit.loco .loco-arrow { font-size: 7px; }  /* 🔼 KECILKAN: panah lok */
+.unit.facing-east .loco-arrow::before { content: '▶'; }
+.unit.facing-west .loco-arrow::before { content: '◀'; }
+.unit.selected {
+    background: var(--selected) !important; color: #fff !important;
+    border: 1px solid #a05000 !important; box-shadow: 0 0 5px rgba(224,123,16,.8);
+}
+
+/* Petunjuk arah */
+.dir-hint { 
+    font-family: var(--mono); 
+    font-size: 6px;          /* 🔼 KECILKAN: petunjuk arah */
+    color: rgba(80,160,220,0.55); text-align: right; 
+}
+
+/* =========================================== */
+/* 💬 POPUP & CONTEXT MENU */
+/* =========================================== */
+.popup-base {
+    position: fixed; z-index: 200;
+    background: #0d1e35; border: 1px solid var(--secondary);
+    border-radius: 4px; padding: 10px; width: 260px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.85);
+}
+.popup-base h4 { font-size: 11px; font-weight: 700; color: var(--secondary); margin-bottom: 8px; }
+.popup-base label { font-size: 10px; color: #aac0d8; display: block; margin-bottom: 2px; }
+.popup-base select, .popup-base input[type=text], .popup-base input[type=number] {
+    font-family: var(--mono); font-size: 11px;
+    background: #07101c; color: var(--text);
+    border: 1px solid var(--border); border-radius: 2px;
+    padding: 3px 6px; width: 100%; margin-bottom: 6px;
+}
+.popup-base input[type=number] { width: 70px; }
+.preview-box {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    background: #1a3050; color: #fff; text-align: center;
+    padding: 4px; border-radius: 2px; margin-bottom: 7px;
+    max-height: 80px; overflow-y: auto; line-height: 1.6;
+}
+.popup-row { display: flex; gap: 6px; align-items: flex-end; margin-bottom: 6px; }
+.popup-btns { display: flex; gap: 5px; }
+.popup-btns button {
+    flex: 1; font-family: var(--sans); font-size: 11px; font-weight: 700;
+    border: none; padding: 4px; border-radius: 2px; cursor: pointer;
+}
+.btn-popup-ok  { background: var(--success); color: #fff; }
+.btn-popup-ok:hover  { background: #1e9050; }
+.btn-popup-cancel { background: #333; color: #ccc; }
+.edit-list { max-height: 180px; overflow-y: auto; margin-bottom: 7px; }
+.edit-item { display: flex; gap: 4px; align-items: center; margin-bottom: 3px; }
+.edit-item input {
+    font-family: var(--mono); font-size: 10px;
+    background: #07101c; color: var(--text);
+    border: 1px solid var(--border); border-radius: 2px;
+    padding: 2px 5px; flex: 1;
+}
+.edit-item .chip-num { font-size: 9px; color: #5a8ab0; min-width: 16px; text-align: right; }
+.edit-item.is-loco input { border-color: var(--loco); color: #5dade2; }
+#popOverlay { display:none; position:fixed; inset:0; z-index:199; }
+
+.ctx-menu {
+    position: fixed; z-index: 300;
+    background: #0d1e35; border: 1px solid var(--secondary);
+    border-radius: 3px; padding: 4px 0;
+    box-shadow: 0 4px 16px rgba(0,0,0,.7); min-width: 175px;
+}
+.ctx-item { padding: 5px 14px; font-size: 11px; cursor: pointer; color: var(--text); font-weight: 700; }
+.ctx-item:hover { background: #1a3050; color: #fff; }
+.ctx-item.danger { color: var(--danger); }
+.ctx-item.danger:hover { background: #3a0010; }
+.ctx-sep { height: 1px; background: var(--border); margin: 3px 0; }
+
+/* =========================================== */
+/* 📝 LOG */
+/* =========================================== */
+.log-wrap {
+    margin-top: 6px; background: #04080f;
+    border: 1px solid var(--border); border-left: 3px solid var(--secondary);
+    border-radius: 2px; padding: 5px 10px;
+    height: 110px; overflow-y: auto; font-family: var(--mono); font-size: 10px;
+}
+.log-entry { padding: 1px 0; border-bottom: 1px solid rgba(30,58,95,.2); }
+.log-ok   { color: #2ecc71; }
+.log-err  { color: #e74c3c; }
+.log-info { color: #5dade2; }
+.log-edit { color: #f5a623; }
+#importFile { display: none; }
+</style>
+</head>
+<body>
+
+<!-- =========================================== -->
+<!-- 🎮 HEADER - Tombol-tombol kontrol           -->
+<!-- =========================================== -->
+<div class="header">
+    <div class="header-title">SIMULATOR LANGSIR <span>KETAPANG</span> <small style="color:#5dade2;font-size:10px"> v7</small></div>
+    <div class="hdr-stat"><div class="hdr-stat-val" id="moveCount">0</div><div class="hdr-stat-lbl">GERAKAN</div></div>
+    <div class="hdr-stat"><div class="hdr-stat-val" id="selCount">0</div><div class="hdr-stat-lbl">DIPILIH</div></div>
+    <div class="hdr-divider"></div>
+    
+    <!-- =========================================== -->
+    /* 🎛️ KONFIGURASI MENU - SETEL DI JAVASCRIPT!
+    /* Cari variable MENU_VISIBILITY di bagian atas script
+    /* =========================================== */
+    <button class="hdr-btn btn-layout" id="btnLayout" onclick="toggleLayoutMode()">📐 ATUR POSISI</button>
+    <button class="hdr-btn btn-snap"   id="btnSnap"   onclick="toggleSnap()">⊞ SNAP GRID</button>
+    
+    <div class="hdr-divider"></div>
+    
+    <button class="hdr-btn btn-save"   id="btnSave"   onclick="saveTemplate()">💾 SIMPAN</button>
+    <button class="hdr-btn btn-load"   id="btnLoad"   onclick="loadTemplate()">📂 MUAT</button>
+    <button class="hdr-btn btn-export" id="btnExport" onclick="exportJSON()">⬇ EXPORT</button>
+    <button class="hdr-btn btn-export" id="btnImport" onclick="document.getElementById('importFile').click()">⬆ IMPORT</button>
+    <button class="hdr-btn btn-reset"  id="btnReset"  onclick="confirmReset()">↺ RESET</button>
+    
+    <input type="file" id="importFile" accept=".json" onchange="importJSON(event)">
+</div>
+
+<!-- Info bar -->
+<div class="info-bar">
+    <span id="statusBar">Drag unit untuk memilih | <span class="hint">SHIFT+KLIK</span> extend | <span class="hint">KLIK KANAN</span> opsi</span>
+    <span id="layoutLabel">[ MODE ATUR POSISI — Drag ⠿ untuk pindahkan slot ]</span>
+</div>
+
+<!-- Map container -->
+<div class="map-wrapper">
+    <div class="emplasemen-container" id="map"></div>
+</div>
+
+<!-- Log panel -->
+<div class="log-wrap" id="log"></div>
+
+<!-- Context Menu -->
+<div class="ctx-menu" id="ctxMenu" style="display:none">
+    <div class="ctx-item" onclick="ctxSelectAll()">☑ Pilih Semua Rangkaian</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="ctxAddUnit()">➕ Tambah Sarana</div>
+    <div class="ctx-item" onclick="ctxEditUnit()">✏️ Edit Nama Sarana Ini</div>
+    <div class="ctx-item danger" onclick="ctxDeleteUnit()">✕ Hapus Sarana Ini</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="ctxEditTrack()">📋 Edit Semua di Jalur Ini</div>
+    <div class="ctx-item danger" onclick="ctxClearTrack()">🗑 Kosongkan Jalur</div>
+</div>
+
+<!-- Popup overlay -->
+<div id="popOverlay" onclick="closePopup(event)"></div>
+
+<script>
+'use strict';
+
+// ===========================================
+// 🎛️ KONFIGURASI MENU - UBAH true/false DI SINI!
+// ===========================================
+const MENU_VISIBILITY = {
+    aturPosisi: true,      // true = tampil, false = sembunyi
+    snapGrid: true,        // true = tampil, false = sembunyi
+    simpan: true,          // tombol SIMPAN
+    muat: true,            // tombol MUAT
+    export: true,          // tombol EXPORT
+    import: true,          // tombol IMPORT
+    reset: true,           // tombol RESET
+    showDividers: true,    // tampilkan pemisah (|) antar menu
+};
+
+// ===========================================
+//  PRESET SARANA
+// ===========================================
+const SARANA_TYPES = [
+    { code:'LOK CC', label:'Lok CC206 / CC201', prefix:'LOK CC206 ' },
+    { code:'LOK BB', label:'Lok BB302 / BB306', prefix:'LOK BB302 ' },
+    { code:'K1',     label:'Kereta K1 (Eksekutif)', prefix:'K1 ' },
+    { code:'K2',     label:'Kereta K2 (Bisnis)',    prefix:'K2 ' },
+    { code:'K3',     label:'Kereta K3 (Ekonomi)',   prefix:'K3 ' },
+    { code:'M1',     label:'Kereta Makan M1',       prefix:'M1 ' },
+    { code:'MP',     label:'Kereta Makan Pembangkit',prefix:'MP ' },
+    { code:'P',      label:'Kereta Pembangkit',     prefix:'P '  },
+    { code:'GD',     label:'Gerbong Datar GD',      prefix:'GD ' },
+    { code:'PPCW',   label:'Gerbong PPCW',          prefix:'PPCW ' },
+    { code:'GDS',    label:'Gerbong GDS',           prefix:'GDS ' },
+    { code:'CUSTOM', label:'— Nama Bebas —',        prefix:'' },
+];
+
+// ===========================================
+//  DATA JALUR - UBAH NAMA, KOORDINAT, KAPASITAS DI SINI!
+// ===========================================
+const DEFAULT_TRACKS = {
+    "JALUR I":   { x:610, y:170, w:400, cap:14, units:["K1 08610","K1 08611"], westX:610, eastX:1010 },
+    "JALUR II":  { x:640, y:210, w:380, cap:15, units:["K1 08612","K1 08613"], westX:640, eastX:1020 },
+    "JALUR III": { x:595, y:250, w:410, cap:16, units:["K1 08614","K1 08615"], westX:595, eastX:1005 },
+    "JALUR IV":  { x:530, y:290, w:460, cap:15, units:["K1 08616","K1 08617"], westX:530, eastX:990 },
+    "JALUR V":   { x:475, y:330, w:460, cap:15, units:["KRT 001","KRT 002","KRT 003","KRT 004","KRT 005"], westX:475, eastX:935 },
+    "JALUR VI":  { x:455, y:370, w:460, cap:17, units:["KRT 0001","KRT 0002","KRT 0003","KRT 0004","KRT 0005","KRT 0006","KRT 0007"], westX:455, eastX:915 },
+    "DIPO LOKO":      { x:550, y:110, w:190, cap:5,  units:["LOK CC206 01"], westX:550, eastX:740 },
+    "DIPO KRT 1":     { x:140, y:30,  w:230, cap:5,  units:["KRT 1","KRT 2","KRT 3","KRT 4","KRT 5"], westX:140, eastX:370 },
+    "DIPO KRT 2":     { x:140, y:70,  w:230, cap:7,  units:["KRT 01","KRT 02","KRT 03","KRT 04","KRT 05","KRT 06","KRT 07"], westX:140, eastX:370 },
+    "CUCI 1":         { x:140, y:110, w:230, cap:11, units:[], westX:140, eastX:370 },
+    "CUCI 2":         { x:140, y:150, w:230, cap:11, units:[], westX:140, eastX:370 },
+    "JALUR LUNCUR 2": { x:300, y:210, w:150, cap:6,  units:[], westX:300, eastX:450 },
+    "JALUR LUNCUR 4": { x:300, y:290, w:150, cap:6,  units:[], westX:300, eastX:450 },
+    "8E AGO":         { x:1155,y:210, w:150, cap:18, units:[], westX:1155, eastX:1305 },
+};
+
+// ===========================================
+//  KONEKSI JALUR - UBAH KONEKSI DI SINI!
+// ===========================================
+const CONNECTIONS = {
+    "JALUR I":   ["8E AGO","JALUR LUNCUR 2","DIPO KRT 1","DIPO KRT 2","CUCI 1","CUCI 2"],
+    "JALUR II":  ["8E AGO","JALUR LUNCUR 2","DIPO KRT 1","DIPO KRT 2","CUCI 1","CUCI 2"],
+    "JALUR III": ["8E AGO","JALUR LUNCUR 4"],
+    "JALUR IV":  ["8E AGO","JALUR LUNCUR 4"],
+    "JALUR V":   ["8E AGO"],
+    "JALUR VI":  ["8E AGO"],
+    "DIPO LOKO":      ["DIPO KRT 1","DIPO KRT 2","CUCI 1","CUCI 2"],
+    "DIPO KRT 1":     ["DIPO LOKO","JALUR I","JALUR II"],
+    "DIPO KRT 2":     ["DIPO LOKO","JALUR I","JALUR II"],
+    "CUCI 1":         ["DIPO LOKO","JALUR I","JALUR II"],
+    "CUCI 2":         ["DIPO LOKO","JALUR I","JALUR II"],
+    "JALUR LUNCUR 2": ["JALUR I","JALUR II"],
+    "JALUR LUNCUR 4": ["JALUR II","JALUR III","JALUR IV"],
+    "8E AGO":         ["JALUR I","JALUR II","JALUR III","JALUR IV","JALUR V","JALUR VI"],
+};
+
+// ===========================================
+//  DATA WESEL - UBAH RUTE WESEL DI SINI!
+// ===========================================
+const SWITCH_DATA = {
+    "JALUR I-8E AGO":"4,2,1",       "JALUR II-8E AGO":"2,1",
+    "JALUR III-8E AGO":"3,1",       "JALUR IV-8E AGO":"5,3,1",
+    "JALUR V-8E AGO":"6,5A,5,3,1",  "JALUR VI-8E AGO":"6,5A,5,3,1",
+    "DIPO LOKO-DIPO KRT 1":"30A,11A,28A", "DIPO LOKO-DIPO KRT 2":"30A,11A,28A",
+    "DIPO LOKO-CUCI 1":"30A,11A,11B",     "DIPO LOKO-CUCI 2":"30A,11A,11B",
+    "JALUR I-DIPO KRT 1":"9,10,12,11A,28A",  "JALUR I-DIPO KRT 2":"9,10,12,11A,28A",
+    "JALUR I-CUCI 1":"9,10,12,11A,11B",      "JALUR I-CUCI 2":"9,10,12,11A,11B",
+    "JALUR I-JALUR LUNCUR 2":"9,10,14",
+    "JALUR II-DIPO KRT 1":"7,9,10,12,11A,28A", "JALUR II-DIPO KRT 2":"7,9,10,12,11A,28A",
+    "JALUR II-CUCI 1":"7,9,10,12,11A,11B",     "JALUR II-CUCI 2":"7,9,10,12,11A,11B",
+    "JALUR II-JALUR LUNCUR 2":"7,8,14",        "JALUR II-JALUR LUNCUR 4":"7,8,11,13,15",
+    "JALUR III-JALUR LUNCUR 4":"11,13,15",     "JALUR IV-JALUR LUNCUR 4":"13,15",
+    "8E AGO-JALUR I":"1,2,4",       "8E AGO-JALUR II":"1,2",
+    "8E AGO-JALUR III":"1,3",       "8E AGO-JALUR IV":"1,3,5",
+    "8E AGO-JALUR V":"1,3,5,5A,6", "8E AGO-JALUR VI":"1,3,5,5A,6",
+    "DIPO KRT 1-DIPO LOKO":"28A,11A,30A", "DIPO KRT 2-DIPO LOKO":"28A,11A,30A",
+    "CUCI 1-DIPO LOKO":"11B,11A,30A",     "CUCI 2-DIPO LOKO":"11B,11A,30A",
+    "DIPO KRT 1-JALUR I":"28A,11A,12,10,9",  "DIPO KRT 2-JALUR I":"28A,11A,12,10,9",
+    "CUCI 1-JALUR I":"11B,11A,12,10,9",      "CUCI 2-JALUR I":"11B,11A,12,10,9",
+    "JALUR LUNCUR 2-JALUR I":"14,10,9",
+    "DIPO KRT 1-JALUR II":"28A,11A,12,10,9,7", "DIPO KRT 2-JALUR II":"28A,11A,12,10,9,7",
+    "CUCI 1-JALUR II":"11B,11A,12,10,9,7",     "CUCI 2-JALUR II":"11B,11A,12,10,9,7",
+    "JALUR LUNCUR 2-JALUR II":"14,8,7",        "JALUR LUNCUR 4-JALUR II":"15,13,11,8,7",
+    "JALUR LUNCUR 4-JALUR III":"15,13,11",     "JALUR LUNCUR 4-JALUR IV":"15,13",
+};
+
+// ===========================================
+//  STATE
+// ===========================================
+let trackConfigs  = JSON.parse(JSON.stringify(DEFAULT_TRACKS));
+let selectedUnits = [];
+let fromTrack     = null;
+let moveCount     = 0;
+let layoutMode    = false;
+let snapGrid      = false;
+const GRID        = 5;
+
+let ctxTrack = null, ctxUnitIdx = null;
+let dragState = null, dragCurrentIdx = -1;
+let slotDrag  = null;
+let popupTrack = null, popupMode = null;
+
+// ===========================================
+//  OPTIMASI RENDER - Biar tidak lemot
+// ===========================================
+let needsRender = false;
+let renderTimer = null;
+function requestRender() {
+    if (needsRender) return;
+    needsRender = true;
+    if (renderTimer) clearTimeout(renderTimer);
+    renderTimer = setTimeout(() => {
+        render();
+        needsRender = false;
+        renderTimer = null;
+    }, 16); // 60fps
+}
+
+// ===========================================
+//  APPLY MENU VISIBILITY
+// ===========================================
+function applyMenuVisibility() {
+    const btnLayout = document.getElementById('btnLayout');
+    const btnSnap = document.getElementById('btnSnap');
+    const btnSave = document.getElementById('btnSave');
+    const btnLoad = document.getElementById('btnLoad');
+    const btnExport = document.getElementById('btnExport');
+    const btnImport = document.getElementById('btnImport');
+    const btnReset = document.getElementById('btnReset');
+    const dividers = document.querySelectorAll('.hdr-divider');
+    
+    if (btnLayout) btnLayout.style.display = MENU_VISIBILITY.aturPosisi ? 'inline-block' : 'none';
+    if (btnSnap) btnSnap.style.display = MENU_VISIBILITY.snapGrid ? 'inline-block' : 'none';
+    if (btnSave) btnSave.style.display = MENU_VISIBILITY.simpan ? 'inline-block' : 'none';
+    if (btnLoad) btnLoad.style.display = MENU_VISIBILITY.muat ? 'inline-block' : 'none';
+    if (btnExport) btnExport.style.display = MENU_VISIBILITY.export ? 'inline-block' : 'none';
+    if (btnImport) btnImport.style.display = MENU_VISIBILITY.import ? 'inline-block' : 'none';
+    if (btnReset) btnReset.style.display = MENU_VISIBILITY.reset ? 'inline-block' : 'none';
+    
+    if (MENU_VISIBILITY.showDividers) {
+        const afterDiv1Visible = MENU_VISIBILITY.aturPosisi || MENU_VISIBILITY.snapGrid;
+        const afterDiv2Visible = MENU_VISIBILITY.simpan || MENU_VISIBILITY.muat || 
+                                 MENU_VISIBILITY.export || MENU_VISIBILITY.import || MENU_VISIBILITY.reset;
+        if (dividers[0]) dividers[0].style.display = afterDiv1Visible ? 'block' : 'none';
+        if (dividers[1]) dividers[1].style.display = afterDiv2Visible ? 'block' : 'none';
+    } else {
+        dividers.forEach(d => d.style.display = 'none');
+    }
+}
+
+//
