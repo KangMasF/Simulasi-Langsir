@@ -40,10 +40,10 @@
     /* ┌─────────────────────────────────────────────────────┐
        │  🚃  WARNA CHIP SARANA (kotak kecil di jalur)       │
        └─────────────────────────────────────────────────────┘ */
-    --warna-chip-bg:      rgba(220,235,248,0.92);  /* latar chip sarana biasa */
-    --warna-chip-teks:    #0d1a2a;                 /* teks chip sarana biasa */
-    --warna-loko-bg:      #1a6fa8;                 /* latar chip lokomotif */
-    --warna-loko-teks:    #ffffff;                 /* teks chip lokomotif */
+    --warna-chip-bg:      black;  /* latar chip sarana biasa */
+    --warna-chip-teks:    white;                 /* teks chip sarana biasa */
+    --warna-loko-bg:     red;                 /* latar chip lokomotif */
+    --warna-loko-teks:    white;                 /* teks chip lokomotif */
     --warna-chip-pilih:   #e07b10;                 /* warna chip saat dipilih/selected */
 
     /* ┌─────────────────────────────────────────────────────┐
@@ -51,16 +51,16 @@
        │  Opsi font dari Google: 'Roboto Condensed',         │
        │  'Oswald', 'Barlow Condensed', 'Orbitron'           │
        └─────────────────────────────────────────────────────┘ */
-    --font-sans:  'Roboto Condensed', Arial Narrow, Arial, sans-serif;
-    --font-mono:  'Roboto Mono', 'Courier New', monospace;
+    --font-sans:  'Arial Narrow', Arial Narrow, Arial Narrow, Arial Narrow;
+    --font-mono:  'Arial Narrow', 'Arial Narrow', monospace;
     --font-judul: 'Roboto Condensed', sans-serif;  /* font judul di header */
 
     /* ┌─────────────────────────────────────────────────────┐
        │  📏  UKURAN FONT                                    │
        └─────────────────────────────────────────────────────┘ */
     --ukuran-judul-header: 15px;   /* judul "SIMULATOR LANGSIR KETAPANG" */
-    --ukuran-nama-jalur:   9px;    /* nama jalur di atas setiap slot */
-    --ukuran-chip:         8px;    /* teks di dalam chip sarana */
+    --ukuran-nama-jalur:   0px;    /* nama jalur di atas setiap slot */
+    --ukuran-chip:         10px;    /* teks di dalam chip sarana */
     --ukuran-log:          10px;   /* teks di kotak log aktivitas */
 
     /* ┌─────────────────────────────────────────────────────┐
@@ -494,14 +494,14 @@ body.layout-mode .track-slot .slot-drag-handle { display: flex; }
 // ║  Ubah true → false untuk menyembunyikan tombol          ║
 // ╚══════════════════════════════════════════════════════════╝
 const MENU_VISIBILITY = {
-    aturPosisi:   true,   // 📐 ATUR POSISI — geser slot jalur
-    snapGrid:     true,   // ⊞ SNAP GRID — tempel ke grid 5px
+    aturPosisi:   false,   // 📐 ATUR POSISI — geser slot jalur
+    snapGrid:     false,   // ⊞ SNAP GRID — tempel ke grid 5px
     simpan:       true,   // 💾 SIMPAN
     muat:         true,   // 📂 MUAT
     export:       true,   // ⬇ EXPORT JSON
     import:       true,   // ⬆ IMPORT JSON
     reset:        true,   // ↺ RESET ke awal
-    kustomVisual: true,   // 🎨 KUSTOM VISUAL — panel kustomisasi tampilan
+    kustomVisual: false,   // 🎨 KUSTOM VISUAL — panel kustomisasi tampilan
     showDividers: true,   // garis pemisah | antar kelompok
 };
 
@@ -548,22 +548,22 @@ const DEFAULT_TRACKS = {
     "JALUR IV":  { x:530, y:290, w:460, cap:15, units:[],
                    westX:530, eastX:990  },
     "JALUR V":   { x:475, y:330, w:460, cap:15,
-                   units:["KRT 001","KRT 002","KRT 003","KRT 004","KRT 005"],
+                   units:[],
                    westX:475, eastX:935  },
     "JALUR VI":  { x:455, y:370, w:460, cap:17,
-                   units:["KRT 0001","KRT 0002","KRT 0003","KRT 0004","KRT 0005","KRT 0006","KRT 0007"],
+                   units:[],
                    westX:455, eastX:915  },
-    "DIPO LOKO":      { x:550, y:90, w:190, cap:4,
-                        units:["LOK CC206 01"], westX:550, eastX:740 },
+    "DIPO LOKO":      { x:550, y:99, w:100, cap:4,
+                        units:[], westX:550, eastX:740 },
     "DIPO KRT 1":     { x:140, y:30,  w:230, cap:7,
-                        units:["KRT 1","KRT 2","KRT 3","KRT 4","KRT 5"], westX:140, eastX:370 },
+                        units:[], westX:140, eastX:370 },
     "DIPO KRT 2":     { x:140, y:70,  w:230, cap:8,
-                        units:["KRT 01","KRT 02","KRT 06","KRT 04","KRT 05","KRT 06","KRT 07"], westX:140, eastX:370 },
-    "CUCI 1":         { x:140, y:110, w:230, cap:11, units:[], westX:140, eastX:370 },
-    "CUCI 2":         { x:140, y:150, w:230, cap:11, units:[], westX:140, eastX:370 },
+                        units:[], westX:140, eastX:370 },
+    "CUCI 1":         { x:1, y:110, w:230, cap:11, units:[], westX:140, eastX:370 },
+    "CUCI 2":         { x:1, y:150, w:230, cap:11, units:[], westX:140, eastX:370 },
     "JALUR LUNCUR 2": { x:300, y:210, w:150, cap:7,  units:[], westX:300, eastX:450 },
     "JALUR LUNCUR 4": { x:300, y:290, w:150, cap:2,  units:[], westX:300, eastX:450 },
-    "8E AGO":         { x:1255,y:190, w:150, cap:13, units:[], westX:1155,eastX:1305 },
+    "8E AGO":         { x:1255,y:199, w:50, cap:13, units:[], westX:1155,eastX:1305 },
 };
 
 // ╔══════════════════════════════════════════════════════════╗
@@ -698,13 +698,13 @@ const KUSTOM_DEFS = [
     { id:'kc_peta_bg',      label:'Background Peta',     type:'color', var:'--peta-bg',            def:'#ffffff' },
     // ── Slot Jalur ──
     { section: '🔲 Slot Jalur' },
-    { id:'kc_nama_jalur',   label:'Warna Nama Jalur',    type:'color', var:'--warna-nama-jalur',   def:'#90caff' },
+    { id:'kc_nama_jalur',   label:'Warna Nama Jalur',    type:'color', var:'--warna-nama-jalur',   def:'black' },
     { id:'kc_slot_opacity', label:'Transparansi Slot',   type:'range', var:'--slot-bg',
       def: '0.80', min:0, max:1, step:0.05,
       toCSS: v => { const c=document.getElementById('kc_slot_color')?.value||'#000a1c'; return hexToRgba(c, parseFloat(v)); },
       fromCSS: css => { const m=css.match(/rgba?\([^)]+,\s*([\d.]+)\)/); return m?m[1]:'0.80'; } },
     { id:'kc_slot_color',   label:'Warna Slot',          type:'color', var:'--slot-bg',
-      def:'#000a1c',
+      def:'black',
       toCSS: v => { const op=document.getElementById('kc_slot_opacity')?.value||'0.80'; return hexToRgba(v, parseFloat(op)); },
       fromCSS: css => { const m=css.match(/rgba?\(([\d]+),([\d]+),([\d]+)/); if(!m)return '#000a1c'; return rgbToHex(parseInt(m[1]),parseInt(m[2]),parseInt(m[3])); } },
     { id:'kc_slot_blur',    label:'Blur Slot',           type:'range', var:'--slot-blur',
