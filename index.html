@@ -972,7 +972,7 @@ function toggleKustomPanel() {
 }
 
 // ══ UNDO / REDO ══
-function snapshotForHistory() { return { tracks:deepClone(trackConfigs), moveCount, colors:deepClone(unitColors) }; }
+function snapshotForHistory() { return { tracks:deepClone(trackConfigs), moveCount, colors:deepClone(unitColors), midLines:[...moveMidLines], rightLines:[...moveRightLines], agoBuffer:_agoBuffer }; }
 function pushHistory() { undoStack.push(snapshotForHistory()); if (undoStack.length>HISTORY_MAX) undoStack.shift(); redoStack=[]; updateUndoButtons(); }
 function updateUndoButtons() {
     const u=document.getElementById('btnUndo'), r=document.getElementById('btnRedo');
@@ -980,8 +980,8 @@ function updateUndoButtons() {
     u.disabled=undoStack.length===0; r.disabled=redoStack.length===0;
     u.classList.toggle('can-act',undoStack.length>0); r.classList.toggle('can-act',redoStack.length>0);
 }
-function undo() { if(!undoStack.length) return; redoStack.push(snapshotForHistory()); const s=undoStack.pop(); trackConfigs=s.tracks; moveCount=s.moveCount; unitColors=s.colors||{}; selectedUnits=[]; fromTrack=null; addLog(`↩ Undo — gerakan ${moveCount}`,'edit'); updateUndoButtons(); autoSave(); render(); }
-function redo() { if(!redoStack.length) return; undoStack.push(snapshotForHistory()); const s=redoStack.pop(); trackConfigs=s.tracks; moveCount=s.moveCount; unitColors=s.colors||{}; selectedUnits=[]; fromTrack=null; addLog(`↪ Redo — gerakan ${moveCount}`,'edit'); updateUndoButtons(); autoSave(); render(); }
+function undo() { if(!undoStack.length) return; redoStack.push(snapshotForHistory()); const s=undoStack.pop(); trackConfigs=s.tracks; moveCount=s.moveCount; unitColors=s.colors||{}; if(s.midLines!==undefined){moveMidLines=s.midLines;moveRightLines=s.rightLines;_agoBuffer=s.agoBuffer||null;rebuildMoveLogs();} selectedUnits=[]; fromTrack=null; addLog(`↩ Undo — gerakan ${moveCount}`,'edit'); updateUndoButtons(); autoSave(); render(); }
+function redo() { if(!redoStack.length) return; undoStack.push(snapshotForHistory()); const s=redoStack.pop(); trackConfigs=s.tracks; moveCount=s.moveCount; unitColors=s.colors||{}; if(s.midLines!==undefined){moveMidLines=s.midLines;moveRightLines=s.rightLines;_agoBuffer=s.agoBuffer||null;rebuildMoveLogs();} selectedUnits=[]; fromTrack=null; addLog(`↪ Redo — gerakan ${moveCount}`,'edit'); updateUndoButtons(); autoSave(); render(); }
 document.addEventListener('keydown',(e)=>{ const t=document.activeElement.tagName; if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') return; if(e.ctrlKey&&!e.shiftKey&&e.key==='z'){e.preventDefault();undo();} if(e.ctrlKey&&(e.key==='y'||(e.shiftKey&&e.key==='z'))){e.preventDefault();redo();} });
 
 // ══ HELPERS ══
@@ -1005,7 +1005,9 @@ function render() {
         const nameEl=document.createElement('span'); nameEl.className='slot-name'; nameEl.innerText=name; hdr.appendChild(nameEl);
         if (selectedUnits.length>0&&fromTrack&&fromTrack!==name&&isConnected(fromTrack,name)) {
             const mw=document.createElement('div'); mw.className='move-btns-inline';
-            const btn=document.createElement('button'); btn.className='btn-move'; btn.innerText='→ SINI'; btn.onclick=()=>move(name); mw.appendChild(btn); hdr.appendChild(mw);
+            const btn1=document.createElement('button'); btn1.className='btn-move'; btn1.innerText='→ MASUK JALUR'; btn1.onclick=()=>move(name); mw.appendChild(btn1);
+            const btn2=document.createElement('button'); btn2.className='btn-move'; btn2.style.marginLeft='auto'; btn2.innerText='→ MASUK JALUR'; btn2.onclick=()=>move(name); mw.appendChild(btn2);
+            hdr.appendChild(mw);
         } else { const sp=document.createElement('span'); sp.style.flex='1'; hdr.appendChild(sp); }
         const capEl=document.createElement('span'); capEl.className='slot-cap';
         const nlc=data.units.filter(u=>!isLoco(u)).length;
@@ -1041,7 +1043,7 @@ function render() {
     document.getElementById('selCount').innerText=selectedUnits.length;
     const sb=document.getElementById('statusBar');
     if(layoutMode) sb.innerText='';
-    else if(fromTrack&&selectedUnits.length>0) sb.innerText=`Seleksi: ${selectedUnits.length} unit dari [${fromTrack}] — klik → SINI di jalur tujuan`;
+    else if(fromTrack&&selectedUnits.length>0) sb.innerText=`Seleksi: ${selectedUnits.length} unit dari [${fromTrack}] — klik → MASUK JALUR di jalur tujuan`;
     else sb.innerText='Drag unit untuk memilih | SHIFT+KLIK extend | KLIK KANAN opsi sarana | + tambah';
 }
 
@@ -1392,37 +1394,47 @@ function addLog(msg,type='info') { const log=document.getElementById('log'),el=d
 let moveMidLines = [];
 let moveRightLines = [];
 
+let _agoBuffer = null;
+
 function logMove(from, to) {
-    const midEl = document.getElementById('logMid');
+    var midEl = document.getElementById('logMid');
     if (!midEl) return;
-    const placeholder = midEl.querySelector('.log-placeholder');
-    if (placeholder) placeholder.remove();
-    const midLine = from + ' \u2192 ' + to;
+    var ph = midEl.querySelector('.log-placeholder');
+    if (ph) ph.remove();
+    var midLine = from + ' → ' + to;
     moveMidLines.push(midLine);
-    const midEntry = document.createElement('div');
-    midEntry.className = 'log-entry log-ok';
-    midEntry.style.cssText = 'user-select:text;cursor:text;';
-    midEntry.innerText = midLine;
-    midEl.appendChild(midEntry);
-    midEl.scrollTop = midEl.scrollHeight;
-    const mc = document.getElementById('moveCountMid');
+    var me = document.createElement('div');
+    me.className = 'log-entry log-ok'; me.style.cssText = 'user-select:text;cursor:text;';
+    me.innerText = midLine; midEl.appendChild(me); midEl.scrollTop = midEl.scrollHeight;
+    var mc = document.getElementById('moveCountMid');
     if (mc) mc.innerText = moveMidLines.length + ' gerakan';
-    const AGO = '8E AGO';
-    if (from !== AGO && to !== AGO) {
-        const rightEl = document.getElementById('logRight');
-        if (!rightEl) return;
-        const placeholderR = rightEl.querySelector('.log-placeholder');
-        if (placeholderR) placeholderR.remove();
-        const rightLine = from + ' \u2192 ' + to;
-        moveRightLines.push(rightLine);
-        const rightEntry = document.createElement('div');
-        rightEntry.className = 'log-entry log-ok';
-        rightEntry.style.cssText = 'user-select:text;cursor:text;';
-        rightEntry.innerText = rightLine;
-        rightEl.appendChild(rightEntry);
-        rightEl.scrollTop = rightEl.scrollHeight;
-        const rc = document.getElementById('moveCountRight');
+    var AGO = '8E AGO';
+    var rightEl = document.getElementById('logRight');
+    if (!rightEl) return;
+    if (to === AGO) {
+        _agoBuffer = from;
+    } else if (from === AGO && _agoBuffer !== null) {
+        var phR = rightEl.querySelector('.log-placeholder');
+        if (phR) phR.remove();
+        var rLine = _agoBuffer + ' → ' + to;
+        moveRightLines.push(rLine);
+        var re2 = document.createElement('div');
+        re2.className = 'log-entry log-ok'; re2.style.cssText = 'user-select:text;cursor:text;';
+        re2.innerText = rLine; rightEl.appendChild(re2); rightEl.scrollTop = rightEl.scrollHeight;
+        var rc = document.getElementById('moveCountRight');
         if (rc) rc.innerText = moveRightLines.length + ' gerakan';
+        _agoBuffer = null;
+    } else if (from !== AGO && to !== AGO) {
+        var phR2 = rightEl.querySelector('.log-placeholder');
+        if (phR2) phR2.remove();
+        var rLine2 = from + ' → ' + to;
+        moveRightLines.push(rLine2);
+        var re3 = document.createElement('div');
+        re3.className = 'log-entry log-ok'; re3.style.cssText = 'user-select:text;cursor:text;';
+        re3.innerText = rLine2; rightEl.appendChild(re3); rightEl.scrollTop = rightEl.scrollHeight;
+        var rc2 = document.getElementById('moveCountRight');
+        if (rc2) rc2.innerText = moveRightLines.length + ' gerakan';
+        _agoBuffer = null;
     }
 }
 
@@ -1452,6 +1464,24 @@ function resetMoveLogs() {
     if (rightEl) rightEl.innerHTML = '<div class="log-entry log-info log-placeholder" style="font-style:italic">Gerakan (tanpa 8E AGO) akan tercatat di sini...</div>';
     const mc = document.getElementById('moveCountMid'), rc = document.getElementById('moveCountRight');
     if (mc) mc.innerText = '0 gerakan'; if (rc) rc.innerText = '0 gerakan';
+}
+
+
+function rebuildMoveLogs() {
+    var midEl = document.getElementById('logMid');
+    if (midEl) {
+        midEl.innerHTML = '';
+        if (moveMidLines.length === 0) { midEl.innerHTML = '<div class="log-entry log-info log-placeholder" style="font-style:italic">Gerakan akan tercatat di sini...</div>'; }
+        else { moveMidLines.forEach(function(line){var el=document.createElement('div');el.className='log-entry log-ok';el.style.cssText='user-select:text;cursor:text;';el.innerText=line;midEl.appendChild(el);}); midEl.scrollTop=midEl.scrollHeight; }
+        var mc=document.getElementById('moveCountMid'); if(mc) mc.innerText=moveMidLines.length+' gerakan';
+    }
+    var rightEl = document.getElementById('logRight');
+    if (rightEl) {
+        rightEl.innerHTML = '';
+        if (moveRightLines.length === 0) { rightEl.innerHTML = '<div class="log-entry log-info log-placeholder" style="font-style:italic">Gerakan (tanpa 8E AGO) akan tercatat di sini...</div>'; }
+        else { moveRightLines.forEach(function(line){var el=document.createElement('div');el.className='log-entry log-ok';el.style.cssText='user-select:text;cursor:text;';el.innerText=line;rightEl.appendChild(el);}); rightEl.scrollTop=rightEl.scrollHeight; }
+        var rc=document.getElementById('moveCountRight'); if(rc) rc.innerText=moveRightLines.length+' gerakan';
+    }
 }
 
 // ══ INIT ══
