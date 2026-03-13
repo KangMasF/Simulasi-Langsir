@@ -1453,13 +1453,11 @@ function confirmReset() { if(!confirm('Reset ke kondisi awal?'))return;trackConf
 
 // ── RESET HITUNGAN SAJA ──
 function confirmResetCount() {
-    if(!confirm('Reset hitungan gerakan dan log kolom?\nPosisi kereta tidak akan berubah.')) return;
+    if(!confirm('Nol-kan hitungan gerakan dan log kolom?\nPosisi kereta dan riwayat undo tidak akan berubah.')) return;
     moveCount = 0;
-    undoStack = []; redoStack = [];
     resetMoveLogs();
-    updateUndoButtons();
     document.getElementById('moveCount').innerText = '0';
-    addLog('↺ Hitungan gerakan direset.','info');
+    addLog('↺ Hitungan gerakan dinolkan.','info');
     autoSave();
 }
 
