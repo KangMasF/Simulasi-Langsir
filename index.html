@@ -1623,35 +1623,71 @@ function resetKetLog() {
 function copyLogKet() {
     if (!ketLines.length) { alert('Belum ada keterangan yang tercatat.'); return; }
 
-    // Ambil semua baris yang ada isian
-    var filledLines = ketLines.filter(function(k) {
-        return k.text && k.text.trim() !== '';
-    });
+    // Label dipo/cuci dan jalur transit
+    var _DIPO_CUCI_LABELS = ['D1:', 'D2:', 'C1:', 'C2:'];
+    var _TRANSIT_LABELS   = ['J.I:', 'J.II:'];
 
-    // Selalu tambahkan 1 baris kosong paling terakhir dari seluruh daftar
-    var lastLine = ketLines[ketLines.length - 1];
-    var lastIsEmpty = !lastLine.text || lastLine.text.trim() === '';
+    function isDipoCuci(label) { return _DIPO_CUCI_LABELS.indexOf(label) !== -1; }
+    function isTransit(label)  { return _TRANSIT_LABELS.indexOf(label) !== -1; }
+    function isEmpty(k)        { return !k.text || k.text.trim() === ''; }
 
-    var outputLines = filledLines.map(function(k) {
-        return k.label + ' ' + k.text;
-    });
-    if (lastIsEmpty) {
-        outputLines.push(lastLine.label); // tambah label saja tanpa teks
+    // Tandai baris transit kosong yang harus dihapus:
+    // Baris i dihapus jika:
+    //   - isTransit(label) && isEmpty
+    //   - baris sebelumnya (yang tidak kosong atau tidak transit) → isDipoCuci
+    //   - baris sesudahnya (yang tidak kosong atau tidak transit) → isDipoCuci
+    var skipIdx = {};
+    for (var i = 0; i < ketLines.length; i++) {
+        var k = ketLines[i];
+        if (!isTransit(k.label) || !isEmpty(k)) continue;
+
+        // Cari baris sebelumnya yang bukan transit-kosong yang sama
+        var prevLabel = null;
+        for (var p = i - 1; p >= 0; p--) {
+            if (isTransit(ketLines[p].label) && isEmpty(ketLines[p])) continue;
+            prevLabel = ketLines[p].label; break;
+        }
+        // Cari baris sesudahnya yang bukan transit-kosong yang sama
+        var nextLabel = null;
+        for (var n = i + 1; n < ketLines.length; n++) {
+            if (isTransit(ketLines[n].label) && isEmpty(ketLines[n])) continue;
+            nextLabel = ketLines[n].label; break;
+        }
+
+        if (isDipoCuci(prevLabel) && isDipoCuci(nextLabel)) {
+            skipIdx[i] = true;
+        }
+    }
+
+    // Selalu tampilkan 1 baris kosong paling terakhir (penutup)
+    var lastIdx = ketLines.length - 1;
+    var lastLine = ketLines[lastIdx];
+    var lastIsEmpty = isEmpty(lastLine);
+
+    var outputLines = [];
+    for (var j = 0; j < ketLines.length; j++) {
+        var line = ketLines[j];
+        if (skipIdx[j]) continue;                         // transit dipo→jI/jII→dipo → skip
+        if (isEmpty(line)) {
+            outputLines.push(line.label);                 // baris kosong lain: tetap sertakan label
+        } else {
+            outputLines.push(line.label + ' ' + line.text);
+        }
     }
 
     if (!outputLines.length) { alert('Belum ada keterangan yang diisi.'); return; }
 
-    const text = outputLines.join('\n');
-    const fallback = function() {
-        const ta = document.createElement('textarea');
+    var text = outputLines.join('\n');
+    var fallback = function() {
+        var ta = document.createElement('textarea');
         ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
         document.body.appendChild(ta); ta.select(); document.execCommand('copy');
         document.body.removeChild(ta); alert('Tersalin! Paste di Excel.');
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function() {
-            const btn = document.getElementById('copyBtnKet');
-            if (btn) { const o = btn.innerText; btn.innerText = '✅ Tersalin!'; setTimeout(function(){btn.innerText=o;}, 1800); }
+            var btn = document.getElementById('copyBtnKet');
+            if (btn) { var o = btn.innerText; btn.innerText = '✅ Tersalin!'; setTimeout(function(){btn.innerText=o;}, 1800); }
         }).catch(fallback);
     } else { fallback(); }
 }
