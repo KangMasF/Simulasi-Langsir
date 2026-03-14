@@ -1241,14 +1241,11 @@ function move(target) {
     moveCount++;
     addLog(`GRK ${moveCount}: [${leads?'MENARIK':'MENDORONG'}] ${selectedUnits.length} unit  ${fromTrack} → ${target}  | Wesel: ${getSwitch(fromTrack,target)}`,'ok');
     logMove(fromTrack, target);
-    // Auto-isi kolom TOTAL GERAKAN (dipanggil setelah unit sudah berpindah)
+    // Auto-isi teks kolom TOTAL GERAKAN ke baris terakhir yang baru ditambahkan oleh _appendRight→_appendKet
     var _ketResult = _buildKetResult(_movedSnap, _fromSnap, target, _nonLokoAtFromBefore, _nonLokoAtTargetBefore);
-    if (_ketResult !== null) {
-        // Tambah baris dengan label yang benar (AMBIL=from, LEPAS=to)
-        _appendKet(_ketResult.label);
-        // Isi teks otomatis di baris yang baru ditambahkan
+    if (_ketResult !== null && ketLines.length > 0) {
         var _lastIdx = ketLines.length - 1;
-        if (_lastIdx >= 0) {
+        if (!ketLines[_lastIdx].text || ketLines[_lastIdx].text.trim() === '') {
             ketLines[_lastIdx].text = _ketResult.text;
             var _ketEl = document.getElementById('logKet');
             if (_ketEl) {
@@ -1258,8 +1255,6 @@ function move(target) {
             _updateKetCount();
             _saveKet();
         }
-    } else {
-        // Hanya loko yang pindah, tidak ada kereta — tidak perlu baris keterangan
     }
     selectedUnits=[]; fromTrack=null; autoSave(); render();
 }
@@ -1811,6 +1806,10 @@ function _appendRight(line) {
     el.innerText = line; rightEl.appendChild(el); rightEl.scrollTop = rightEl.scrollHeight;
     var rc = document.getElementById('moveCountRight');
     if (rc) rc.innerText = moveRightLines.length + ' gerakan';
+    // Kolom TOTAL GERAKAN: tambah baris label dari jalur TUJUAN baris ini
+    var parts = line.split(' → ');
+    var toJalur = parts.length >= 2 ? parts[parts.length - 1].trim() : '';
+    if (toJalur) _appendKet(toJalur);
 }
 
 function logMove(from, to) {
