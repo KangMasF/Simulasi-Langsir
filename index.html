@@ -1182,6 +1182,9 @@ function _nonLokoWithLoko() {
     return 0;
 }
 
+function _unitType(uname) {
+    for (var i = 0; i < SARANA_TYPES.length; i++) {
+        var t = SARANA_TYPES[i];
         if (t.prefix && uname.startsWith(t.prefix)) return t.code;
     }
     return uname.split(' ')[0];
