@@ -1151,10 +1151,11 @@ function _mapTouchStart(e) {
 
 // ══ MOVE ══
 // ── AUTO KET: bangun teks AMBIL/LEPAS otomatis ──
-// AMBIL = loko datang ke jalur untuk mengambil kereta (target = jalur kerja J.I-J.VI, LUNCUR, DL)
-// LEPAS = loko menaruh kereta ke dipo/cuci (target = DIPO KRT 1/2, CUCI 1/2)
-// Acuan: tujuan gerakan
-var _LEPAS_TARGETS = ['DIPO KRT 1','DIPO KRT 2','CUCI 1','CUCI 2'];
+// AMBIL: moved mengandung non-loko
+//   label = FROM jika kereta ada di FROM sebelum gerakan (loko+kereta bersama pindah)
+//   label = TO   jika kereta ada di TO sebelum gerakan (loko kosong pergi ambil)
+// LEPAS: moved hanya loko → kereta tertinggal di FROM, label = FROM
+// LEPAS SEMUA: count > 1 yang tertinggal
 
 function _unitType(uname) {
     for (var i = 0; i < SARANA_TYPES.length; i++) {
@@ -1164,46 +1165,60 @@ function _unitType(uname) {
     return uname.split(' ')[0];
 }
 
-function _buildKetText(movedUnits, fromTrackName, targetTrackName, isLepasAll) {
-    if (isLepasAll) return 'LEPAS SEMUA';
-    var lokoIdx = movedUnits.findIndex(function(u){ return isLoco(u); });
-    var nonLoko = movedUnits.filter(function(u){ return !isLoco(u); });
-    var count = nonLoko.length;
-    if (count === 0) return null; // hanya loko
+function _buildKetResult(movedUnits, fromTrackName, targetTrackName, nonLokoAtFromBefore, nonLokoAtTargetBefore) {
+    var nonLokoMoved = movedUnits.filter(function(u){ return !isLoco(u); });
+    var lokoOnly = nonLokoMoved.length === 0;
 
-    // LEPAS = menuju dipo/cuci, AMBIL = menuju jalur kerja
-    var isLepas = _LEPAS_TARGETS.indexOf(targetTrackName) !== -1;
+    // Sisa non-loko di FROM setelah gerakan (untuk LEPAS)
+    var srcUnitsNow = trackConfigs[fromTrackName] ? trackConfigs[fromTrackName].units : [];
+    var srcNonLokoNow = srcUnitsNow.filter(function(u){ return !isLoco(u); });
+    var srcNonLokoCount = srcNonLokoNow.length;
 
-    var nonLokoInOrder = movedUnits.filter(function(u){ return !isLoco(u); });
-    // Ujung jauh dari loko = berlawanan posisi loko
-    var ujungJauh, ujungDekat;
-    if (lokoIdx === 0) {
-        // Loko di kiri → jauh = kanan (index terakhir)
-        ujungJauh  = nonLokoInOrder[nonLokoInOrder.length - 1];
-        ujungDekat = nonLokoInOrder[0];
+    if (lokoOnly) {
+        // ── LEPAS: loko pergi sendiri, kereta tertinggal di FROM ──
+        if (srcNonLokoCount === 0) return null;
+        var label = fromTrackName;
+        var text;
+        if (srcNonLokoCount > 1) {
+            text = 'LEPAS SEMUA';
+        } else {
+            var ujung = srcNonLokoNow[srcNonLokoNow.length - 1];
+            var td = _unitType(ujung), nd = ujung.replace(td + ' ', '').trim();
+            text = 'LEPAS 1 KRT ' + td + ' ' + nd;
+        }
+        return { label: label, text: text };
+
     } else {
-        // Loko di kanan (atau tidak ada) → jauh = kiri (index 0)
-        ujungJauh  = nonLokoInOrder[0];
-        ujungDekat = nonLokoInOrder[nonLokoInOrder.length - 1];
-    }
-
-    var pakai_sp = count > 1;
-
-    if (isLepas) {
-        // LEPAS — sebut nomor yang TERDEKAT dari loko
-        var typeDekat  = _unitType(ujungDekat);
-        var nomorDekat = ujungDekat.replace(typeDekat + ' ', '').trim();
-        if (!pakai_sp) return 'LEPAS 1 KRT ' + typeDekat + ' ' + nomorDekat;
-        return 'LEPAS ' + count + ' KRT SP ' + typeDekat + ' ' + nomorDekat;
-    } else {
-        // AMBIL — sebut nomor yang TERJAUH dari loko
-        var typeJauh  = _unitType(ujungJauh);
-        var nomorJauh = ujungJauh.replace(typeJauh + ' ', '').trim();
-        if (!pakai_sp) return 'AMBIL 1 KRT ' + typeJauh + ' ' + nomorJauh;
-        return 'AMBIL ' + count + ' KRT SP ' + typeJauh + ' ' + nomorJauh;
+        // ── AMBIL: loko bawa non-loko ──
+        // Label = jalur tempat kereta berada SEBELUM gerakan:
+        //   jika nonLokoAtFromBefore > 0 → kereta ada di FROM → label=FROM
+        //   jika nonLokoAtTargetBefore > 0 → kereta ada di TO  → label=TO
+        //   jika keduanya 0 → fallback TO
+        // Label = jalur tempat kereta yang DIPINDAH berasal:
+        // Jika ada non-loko tertinggal di FROM → kereta yg dibawa berasal dari TO → label=TO
+        // Jika FROM kosong sebelumnya (fromBefore=0) → kereta diambil dari TO → label=TO
+        // Jika FROM punya non-loko dan SEMUANYA dibawa (srcNonLokoCount=0) → kereta dari FROM → label=FROM
+        var srcAfterCount = srcNonLokoCount; // sisa di FROM setelah gerakan
+        var label;
+        if (nonLokoAtFromBefore > 0 && srcAfterCount === 0) {
+            // Semua non-loko dari FROM ikut → AMBIL dari FROM
+            label = fromTrackName;
+        } else {
+            // Ada yang tertinggal di FROM, atau FROM kosong → kereta yg dibawa dari TO
+            label = targetTrackName;
+        }
+        var count = nonLokoMoved.length;
+        var lokoIdx = movedUnits.findIndex(function(u){ return isLoco(u); });
+        var nonLokoInOrder = movedUnits.filter(function(u){ return !isLoco(u); });
+        var ujungJauh = lokoIdx === 0
+            ? nonLokoInOrder[nonLokoInOrder.length - 1]
+            : nonLokoInOrder[0];
+        var tj = _unitType(ujungJauh), nj = ujungJauh.replace(tj + ' ', '').trim();
+        var pakai_sp = count > 1;
+        var text = (!pakai_sp ? 'AMBIL 1 KRT ' : 'AMBIL ' + count + ' KRT SP ') + tj + ' ' + nj;
+        return { label: label, text: text };
     }
 }
-
 function move(target) {
     if(layoutMode||!selectedUnits.length||!fromTrack||target===fromTrack) return;
     if(!selectedUnits.some(u=>isLoco(u))){addLog('GAGAL: Tidak ada Lokomotif!','err');return;}
@@ -1216,10 +1231,8 @@ function move(target) {
     // Snapshot sebelum dipindah untuk auto-ket
     const _movedSnap = [...selectedUnits];
     const _fromSnap  = fromTrack;
-    // Cek apakah ini LEPAS SEMUA (semua non-loko di jalur asal ikut pindah)
-    const _srcNonLoko = src.filter(u=>!isLoco(u)).length;
-    const _selNonLoko = selectedUnits.filter(u=>!isLoco(u)).length;
-    const _isLepasAll = (_selNonLoko > 0 && _selNonLoko === _srcNonLoko);
+    const _nonLokoAtFromBefore   = src.filter(u=>!isLoco(u)).length;
+    const _nonLokoAtTargetBefore = trackConfigs[target].units.filter(u=>!isLoco(u)).length;
     pushHistory();
     selectedUnits.map(u=>src.indexOf(u)).sort((a,b)=>b-a).forEach(i=>{if(i>=0)src.splice(i,1);});
     const li=selectedUnits.findIndex(u=>isLoco(u));
@@ -1228,22 +1241,25 @@ function move(target) {
     moveCount++;
     addLog(`GRK ${moveCount}: [${leads?'MENARIK':'MENDORONG'}] ${selectedUnits.length} unit  ${fromTrack} → ${target}  | Wesel: ${getSwitch(fromTrack,target)}`,'ok');
     logMove(fromTrack, target);
-    // Auto-isi kolom TOTAL GERAKAN
-    var _ketText = _buildKetText(_movedSnap, _fromSnap, target, _isLepasAll);
-    if (_ketText !== null && ketLines.length > 0) {
-        var lastKet = ketLines[ketLines.length - 1];
-        if (!lastKet.text || lastKet.text.trim() === '') {
-            lastKet.text = _ketText;
-            // Update DOM input
-            var ketEl = document.getElementById('logKet');
-            if (ketEl) {
-                var inputs = ketEl.querySelectorAll('.log-ket-input');
-                var lastInput = inputs[inputs.length - 1];
-                if (lastInput) lastInput.value = _ketText;
+    // Auto-isi kolom TOTAL GERAKAN (dipanggil setelah unit sudah berpindah)
+    var _ketResult = _buildKetResult(_movedSnap, _fromSnap, target, _nonLokoAtFromBefore, _nonLokoAtTargetBefore);
+    if (_ketResult !== null) {
+        // Tambah baris dengan label yang benar (AMBIL=from, LEPAS=to)
+        _appendKet(_ketResult.label);
+        // Isi teks otomatis di baris yang baru ditambahkan
+        var _lastIdx = ketLines.length - 1;
+        if (_lastIdx >= 0) {
+            ketLines[_lastIdx].text = _ketResult.text;
+            var _ketEl = document.getElementById('logKet');
+            if (_ketEl) {
+                var _inputs = _ketEl.querySelectorAll('.log-ket-input');
+                if (_inputs[_lastIdx]) _inputs[_lastIdx].value = _ketResult.text;
             }
             _updateKetCount();
             _saveKet();
         }
+    } else {
+        // Hanya loko yang pindah, tidak ada kereta — tidak perlu baris keterangan
     }
     selectedUnits=[]; fromTrack=null; autoSave(); render();
 }
@@ -1610,6 +1626,9 @@ function _ketLabel(jalurName) {
     return JALUR_LABEL[jalurName] || jalurName;
 }
 
+// alias untuk dipakai di move()
+function _ketLabel_(jalurName) { return _ketLabel(jalurName); }
+
 function _updateKetCount() {
     const filled = ketLines.filter(function(k){ return k.text && k.text.trim() !== ''; }).length;
     const mc = document.getElementById('moveCountKet');
@@ -1809,7 +1828,7 @@ function logMove(from, to) {
     if (mc) mc.innerText = moveMidLines.length + ' gerakan';
 
     // Kolom 4: tambah baris label dari tujuan gerakan (skip 8E AGO)
-    _appendKet(to);
+    // _appendKet dipanggil dari move() dengan label yang tepat (from untuk AMBIL, to untuk LEPAS)
 
     // ── Kolom Kanan: terapkan dua lapis buffer ──
     var AGO = '8E AGO';
