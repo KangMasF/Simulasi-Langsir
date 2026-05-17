@@ -2400,42 +2400,96 @@ function _isPajHeader(line) {
     return false;
 }
 
-// Parser utama: baca teks multi-jalur, kembalikan { jalurName: [sarana,...], unknown: [...] }
+// ── WARNA OTOMATIS PER JALUR ──
+// Konfigurasi: namaJalur → warna chip (id dari WARNA_LIST)
+// Kosongkan string untuk tidak memberi warna otomatis.
+const PAJ_AUTO_COLOR = {
+    'DIPO KRT 1': 'merah',
+    'DIPO KRT 2': 'kuning',
+    'JALUR VI'  : 'abu',
+    'JALUR V'   : '',
+    'JALUR IV'  : '',
+    'JALUR III' : '',
+    'JALUR II'  : '',
+    'JALUR I'   : '',
+    'CUCI 1'    : '',
+    'CUCI 2'    : '',
+    'DIPO LOKO' : '',
+    '8E AGO'    : '',
+};
+
+// Parser utama: baca teks multi-jalur dari format TABEL KOLOM Excel
+// Saat copy dari Excel, tiap baris adalah satu baris Excel,
+// tiap kolom dipisah TAB. Baris pertama tiap kolom adalah header jalur.
+// Kembalikan { jalurName: [sarana,...], unknown: [...] }
 function parsePasteSemuaJalur(raw) {
-    const lines = raw.split(/[\n\r]+/).map(l => l.trim()).filter(l => l.length > 0);
-    const result   = {};  // { namaJalur: [sarana] }
-    const unknown  = []; // baris yang tidak bisa diklasifikasi
-    let   curJalur = null;
+    const result  = {};  // { namaJalur: [sarana] }
+    const unknown = [];
 
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
+    // Pecah jadi baris, pertahankan sel kosong
+    const rawLines = raw.split(/[\n\r]+/);
 
-        // Cek apakah ini header jalur
-        const jalurMatch = _pajMatchJalur(line);
-        if (jalurMatch) {
-            curJalur = jalurMatch;
-            if (!result[curJalur]) result[curJalur] = [];
-            continue;
+    // Deteksi apakah teks mengandung TAB (format tabel Excel multi-kolom)
+    const hasTabs = rawLines.some(l => l.includes('\t'));
+
+    if (hasTabs) {
+        // ── MODE TABEL KOLOM: format Excel, tiap kolom = satu jalur ──
+        // Baris → array kolom
+        const grid = rawLines.map(line => line.split('\t').map(c => c.trim()));
+        const numCols = Math.max(...grid.map(r => r.length));
+
+        // Untuk tiap kolom, tentukan header jalur dari sel pertama yang cocok
+        // (tidak harus baris 0, bisa baris 1 atau 2 tergantung copy range)
+        for (let col = 0; col < numCols; col++) {
+            let jalurKolom = null;
+            let headerRowIdx = -1;
+
+            // Cari baris header di kolom ini (baris pertama yang cocok nama jalur)
+            for (let row = 0; row < grid.length; row++) {
+                const cell = grid[row][col] || '';
+                if (!cell) continue;
+                const jalurMatch = _pajMatchJalur(cell);
+                if (jalurMatch) {
+                    jalurKolom = jalurMatch;
+                    headerRowIdx = row;
+                    if (!result[jalurKolom]) result[jalurKolom] = [];
+                    break;
+                }
+            }
+
+            if (!jalurKolom) continue; // kolom tanpa header jalur → skip
+
+            // Baca sarana di baris setelah header
+            for (let row = headerRowIdx + 1; row < grid.length; row++) {
+                const cell = grid[row][col] || '';
+                if (!cell) continue;
+                if (_isPajHeader(cell)) continue; // skip header lain (POSISI KERETA, dll)
+                const expanded = parsePasteText(cell);
+                expanded.forEach(s => { if (s) result[jalurKolom].push(s); });
+            }
         }
+    } else {
+        // ── MODE VERTIKAL: format teks / satu kolom per blok ──
+        const lines = rawLines.map(l => l.trim()).filter(l => l.length > 0);
+        let curJalur = null;
 
-        // Jika belum ada jalur aktif → coba tebak dari konteks
-        if (!curJalur) {
-            // Abaikan baris header non-jalur
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const jalurMatch = _pajMatchJalur(line);
+            if (jalurMatch) {
+                curJalur = jalurMatch;
+                if (!result[curJalur]) result[curJalur] = [];
+                continue;
+            }
+            if (!curJalur) {
+                if (_isPajHeader(line)) continue;
+                unknown.push(line);
+                continue;
+            }
             if (_isPajHeader(line)) continue;
-            unknown.push(line);
-            continue;
+            const expanded = parsePasteText(line);
+            expanded.forEach(s => { if (s) result[curJalur].push(s); });
         }
-
-        // Abaikan baris header non-sarana di dalam blok jalur
-        if (_isPajHeader(line)) {
-            // Cek apakah baris berikutnya cocok jalur (artinya ini memang transisi)
-            // Tidak lakukan apa-apa, biarkan iterasi berikutnya tangani
-            continue;
-        }
-
-        // Ini adalah sarana — expand jika diawali angka
-        const expanded = parsePasteText(line);
-        expanded.forEach(s => { if (s) result[curJalur].push(s); });
     }
 
     return { result, unknown };
@@ -2469,21 +2523,26 @@ function _pajRenderPreview(parsed) {
     // Render tiap jalur
     wrap.innerHTML = '';
     if (jalurNames.length === 0) {
-        wrap.innerHTML = '<div style="color:#5a8ab0;font-size:10px;padding:8px;font-style:italic">Belum ada jalur terdeteksi — pastikan teks mengandung nama jalur (misal: DIPO 1:, SPOOR 6:)</div>';
+        wrap.innerHTML = '<div style="color:#5a8ab0;font-size:10px;padding:8px;font-style:italic">Belum ada jalur terdeteksi — blok seluruh tabel POSISI KERETA dari Excel (termasuk header DIPO 1, SPOOR 6, dll) lalu paste.</div>';
         return;
     }
 
     jalurNames.forEach(jalur => {
-        const units = result[jalur];
+        let units = result[jalur];
+        if (_pajDirPAJ === 'SU') units = [...units].reverse();
         const cap   = trackConfigs[jalur] ? trackConfigs[jalur].cap : 999;
         const nlc   = units.filter(u => !isLoco(u)).length;
         const over  = nlc > cap;
+        const warnaId = PAJ_AUTO_COLOR[jalur] || '';
+        const warnaHex = WARNA_LIST.find(w=>w.id===warnaId)?.hex || '';
 
         const row = document.createElement('div');
         row.className = 'paj-jalur-row';
 
         const nameEl = document.createElement('span');
         nameEl.className = 'paj-jalur-name';
+        if (warnaHex) nameEl.style.borderLeft = `3px solid ${warnaHex}`;
+        nameEl.style.paddingLeft = warnaHex ? '5px' : '0';
         nameEl.innerText = jalur + ' (' + units.length + ')';
         row.appendChild(nameEl);
 
@@ -2508,10 +2567,11 @@ function _pajRenderPreview(parsed) {
     });
 }
 
-let _pajParsed = null; // hasil parse terakhir
+let _pajParsed  = null; // hasil parse terakhir
+let _pajDirPAJ  = 'US'; // urutan paste: 'US' = atas→bawah di Utara, 'SU' = terbalik
 
 function openPasteSemuaJalur() {
-    const p = createPopup('📋 PASTE POSISI KERETA — Semua Jalur', '490px');
+    const p = createPopup('📋 PASTE POSISI KERETA — Semua Jalur', '500px');
     p.classList.add('paj-popup');
     document.getElementById('popOverlay').innerHTML = '';
     document.getElementById('popOverlay').appendChild(p);
@@ -2522,26 +2582,91 @@ function openPasteSemuaJalur() {
     p.querySelector('.popup-drag-handle').addEventListener('touchstart',_popDragStartTouch,{passive:false});
 
     p.querySelector('.popup-body').innerHTML = `
-        <div class="paste-hint" style="font-size:10px;color:#90caff;line-height:1.7;margin-bottom:8px">
-            📋 Copy seluruh tabel <b>POSISI KERETA</b> dari email/Excel (semua jalur sekaligus), lalu paste di bawah.<br>
-            Simulator akan otomatis mengenali nama jalur dan menempatkan sarana ke jalur yang tepat.<br>
-            <span style="color:#f5a623">⚡ Sarana diawali angka (misal: "2 K1SS") akan otomatis dipecah menjadi sarana terpisah.</span>
+        <div class="paste-hint" style="font-size:10px;color:#90caff;line-height:1.7;margin-bottom:6px">
+            📋 Blok seluruh tabel <b>POSISI KERETA</b> dari email/Excel termasuk header jalurnya, lalu Ctrl+C → paste di bawah.<br>
+            Simulator otomatis mengenali kolom-kolom jalur dan menempatkan sarana ke jalur yang tepat.<br>
+            <span style="color:#f5a623">⚡ Sarana diawali angka (misal: "2 K1SS") otomatis dipecah menjadi sarana terpisah.</span>
         </div>
-        <textarea class="paj-textarea" id="pajTextarea" placeholder="Paste di sini...&#10;&#10;Contoh:&#10;DIPO 1 :&#10;K3SS 01833 (SO)&#10;K1 08207 (TSO)&#10;&#10;DIPO 2 :&#10;K3NG 01434 (SO)&#10;2 K1SS (SO)&#10;&#10;SPOOR 6 :&#10;K3NG 01431 (SO)&#10;B 00706 (SO)&#10;3 M1 (SO)" oninput="_pajOnInput()"></textarea>
+        <textarea class="paj-textarea" id="pajTextarea" placeholder="Paste dari Excel di sini (Ctrl+V)..." oninput="_pajOnInput()" onpaste="setTimeout(_pajOnInput,0)"></textarea>
+        <label style="font-size:10px;color:#aac0d8;margin-bottom:3px;display:block">Urutan pasang sarana (baris teratas email = di mana?)</label>
+        <div class="dir-selector" style="margin-bottom:6px">
+            <button class="dir-btn active" id="pajDirUS" onclick="setPajDir('US')">⬆ BARIS ATAS = SISI UTARA (dipo)</button>
+            <button class="dir-btn"        id="pajDirSU" onclick="setPajDir('SU')">⬇ BARIS ATAS = SISI SELATAN (AGO)</button>
+        </div>
+        <label style="font-size:10px;color:#aac0d8;margin-bottom:3px;display:block">Warna otomatis per jalur saat diterapkan:</label>
+        <div id="pajColorCfg" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px;padding:5px 6px;background:#07101c;border:1px solid #1e3a5f;border-radius:3px;">
+            <!-- diisi oleh _pajBuildColorCfg() -->
+        </div>
         <div class="paj-status-bar" id="pajStatus">Belum ada teks yang di-paste.</div>
         <div class="paj-unknown-wrap" id="pajUnknown"></div>
-        <label style="font-size:10px;color:#aac0d8;margin-bottom:3px;display:block">Preview per jalur (klik ✓ Terapkan untuk memasukkan ke simulator):</label>
+        <label style="font-size:10px;color:#aac0d8;margin-bottom:3px;display:block">Preview per jalur:</label>
         <div class="paj-result-wrap" id="pajResultWrap">
             <div style="color:#5a8ab0;font-size:10px;padding:8px;font-style:italic">Paste teks di atas untuk melihat preview...</div>
         </div>
-        <div style="font-size:9px;color:#e74c3c;margin-bottom:4px;margin-top:4px" id="pajModeNote">⚠ Mode: <b>GANTI SEMUA</b> — isi jalur yang terdeteksi akan diganti. Jalur lain tidak diubah.</div>
+        <div style="font-size:9px;color:#e74c3c;margin-bottom:4px;margin-top:4px">⚠ Mode: <b>GANTI SEMUA</b> — isi jalur yang terdeteksi akan diganti. Jalur lain tidak diubah.</div>
         <div class="popup-btns">
             <button class="btn-popup-ok" onclick="confirmPasteSemuaJalur()">✓ Terapkan ke Simulator</button>
             <button class="btn-popup-cancel" onclick="_closePopup()">✕ Batal</button>
         </div>
     `;
     _pajParsed = null;
+    _pajBuildColorCfg();
     setTimeout(() => document.getElementById('pajTextarea')?.focus(), 80);
+}
+
+// Render panel konfigurasi warna otomatis
+function _pajBuildColorCfg() {
+    const wrap = document.getElementById('pajColorCfg');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    // Hanya tampilkan jalur yang punya default warna atau yang umum dipakai
+    const DISPLAY_JALURS = ['DIPO KRT 1','DIPO KRT 2','JALUR VI','JALUR V','JALUR IV','JALUR III','JALUR II','JALUR I'];
+    const WARNA_OPTIONS = [
+        { id:'',       hex:'transparent', label:'—' },
+        { id:'merah',  hex:'#dc3c3c',     label:'Merah'  },
+        { id:'oranye', hex:'#dc6400',     label:'Oranye' },
+        { id:'kuning', hex:'#d2aa00',     label:'Kuning' },
+        { id:'hijau',  hex:'#228b22',     label:'Hijau'  },
+        { id:'biru',   hex:'#1e64c8',     label:'Biru'   },
+        { id:'ungu',   hex:'#8232b4',     label:'Ungu'   },
+        { id:'pink',   hex:'#d25096',     label:'Pink'   },
+        { id:'abu',    hex:'#646e78',     label:'Abu'    },
+    ];
+    DISPLAY_JALURS.forEach(jalur => {
+        const curWarna = PAJ_AUTO_COLOR[jalur] || '';
+        const shortName = jalur.replace('DIPO KRT ','D').replace('JALUR ','J.');
+        const item = document.createElement('div');
+        item.style.cssText = 'display:flex;align-items:center;gap:3px;font-size:9px;color:#aac0d8;white-space:nowrap';
+        item.innerHTML = `<span style="min-width:28px">${shortName}</span>`;
+        const sel = document.createElement('select');
+        sel.style.cssText = 'font-size:9px;padding:1px 2px;background:#07101c;color:#dce8f5;border:1px solid #1e3a5f;border-radius:2px;max-width:66px';
+        sel.dataset.jalur = jalur;
+        WARNA_OPTIONS.forEach(w => {
+            const opt = document.createElement('option');
+            opt.value = w.id; opt.innerText = w.label;
+            if (w.id === curWarna) opt.selected = true;
+            sel.appendChild(opt);
+        });
+        sel.addEventListener('change', function() { PAJ_AUTO_COLOR[this.dataset.jalur] = this.value; });
+        // Swatch warna saat ini
+        const swatch = document.createElement('div');
+        swatch.style.cssText = `width:10px;height:10px;border-radius:2px;border:1px solid #444;background:${WARNA_OPTIONS.find(w=>w.id===curWarna)?.hex||'transparent'};flex-shrink:0`;
+        sel.addEventListener('change', function() {
+            PAJ_AUTO_COLOR[this.dataset.jalur] = this.value;
+            swatch.style.background = WARNA_OPTIONS.find(w=>w.id===this.value)?.hex||'transparent';
+        });
+        item.appendChild(swatch);
+        item.appendChild(sel);
+        wrap.appendChild(item);
+    });
+}
+
+function setPajDir(dir) {
+    _pajDirPAJ = dir;
+    document.getElementById('pajDirUS')?.classList.toggle('active', dir==='US');
+    document.getElementById('pajDirSU')?.classList.toggle('active', dir==='SU');
+    // Re-render preview dengan urutan baru jika sudah ada data
+    if (_pajParsed) _pajRenderPreview(_pajParsed);
 }
 
 function _pajOnInput() {
@@ -2562,12 +2687,13 @@ function confirmPasteSemuaJalur() {
     if (!_pajParsed) { alert('Belum ada data. Paste teks posisi kereta terlebih dahulu.'); return; }
     const { result } = _pajParsed;
     const jalurNames = Object.keys(result);
-    if (jalurNames.length === 0) { alert('Tidak ada jalur yang terdeteksi. Pastikan teks memiliki nama jalur.'); return; }
+    if (jalurNames.length === 0) { alert('Tidak ada jalur yang terdeteksi. Pastikan teks memiliki nama jalur seperti DIPO 1, DIPO 2, SPOOR 6.'); return; }
 
     // Cek kapasitas dulu
     for (const jalur of jalurNames) {
         if (!trackConfigs[jalur]) continue;
-        const units = result[jalur];
+        let units = result[jalur];
+        if (_pajDirPAJ === 'SU') units = [...units].reverse();
         const nlc = units.filter(u => !isLoco(u)).length;
         const cap = trackConfigs[jalur].cap;
         if (nlc > cap) {
@@ -2579,14 +2705,20 @@ function confirmPasteSemuaJalur() {
     let total = 0;
     jalurNames.forEach(jalur => {
         if (!trackConfigs[jalur]) return;
-        const units = result[jalur];
+        let units = result[jalur];
+        if (_pajDirPAJ === 'SU') units = [...units].reverse();
         // Hapus warna sarana lama di jalur ini
         trackConfigs[jalur].units.forEach(u => delete unitColors[u]);
         trackConfigs[jalur].units = [...units];
         total += units.length;
+        // Terapkan warna otomatis
+        const warna = PAJ_AUTO_COLOR[jalur] || '';
+        if (warna) {
+            units.forEach(u => { if (u) unitColors[u] = warna; });
+        }
     });
 
-    addLog(`📋 PASTE SEMUA JALUR: ${jalurNames.length} jalur, ${total} sarana diterapkan`, 'edit');
+    addLog(`📋 PASTE POSISI: ${jalurNames.length} jalur, ${total} sarana${_pajDirPAJ==='SU'?' (urutan dibalik)':''}`, 'edit');
     _closePopup();
     autoSave();
     render();
