@@ -1652,8 +1652,11 @@ function parsePasteText(raw) {
     // ── AUTO-EXPAND: jika sarana diawali angka, expand jadi N unit ──
     // Contoh: "2 K1SS" → ["K1SS 001","K1SS 002"]
     // Contoh: "3 M1"   → ["M1 001","M1 002","M1 003"]
+    // KECUALI: mengandung kata KSV → biarkan apa adanya (konservasi, tidak dilangsir)
     const expandSarana = s => {
         s = clean(s); if (!s) return [];
+        // Jika mengandung KSV → tidak di-expand, kembalikan apa adanya
+        if (/KSV/i.test(s)) return [s];
         // Pola: diawali angka, spasi, lalu nama sarana yang diawali huruf
         const m = s.match(/^(\d+)\s+([A-Za-z].*)$/);
         if (!m) return [s]; // tidak ada angka di depan → kembalikan apa adanya
